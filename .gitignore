@@ -1,0 +1,40 @@
+node_modules/
+
+# Local setup files
+/.zshrc
+/RecessAndroidTemplate/
+/Androidmanifest.additions.xml
+
+# React Native / Metro
+.metro/
+.expo/
+
+# Build outputs
+android/app/build/
+android/build/
+ios/build/
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.*
+
+# OS / editor files
+.DS_Store
+.vscode/
+
+# Documentation files except the README
+*.md
+!README.md
+!readme.md
+
+# Generated coverage and caches
+coverage/
+.cache/
+.tmp/
