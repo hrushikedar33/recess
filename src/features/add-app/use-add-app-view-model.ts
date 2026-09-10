@@ -57,6 +57,7 @@ export function useAddAppViewModel() {
         limitMinutes,
         cooldownMinutes,
         isActive: true,
+        iconBase64: selectedApp.iconBase64,
       };
 
       await useCases.addBlockedApp.execute(blockedApp);

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAddAppViewModel } from './use-add-app-view-model';
@@ -36,11 +37,18 @@ export default function AddAppScreen() {
         <View style={styles.configScreen}>
           {/* App Preview */}
           <View style={styles.configHeader}>
-            <View style={styles.bigIcon}>
-              <Text style={styles.bigIconText}>
-                {selectedApp.appName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            {selectedApp.iconBase64 ? (
+              <Image
+                source={{ uri: selectedApp.iconBase64 }}
+                style={styles.bigIconImage}
+              />
+            ) : (
+              <View style={styles.bigIcon}>
+                <Text style={styles.bigIconText}>
+                  {selectedApp.appName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
             <Text style={styles.configAppName}>{selectedApp.appName}</Text>
             <Text style={styles.configAppPkg}>{selectedApp.packageName}</Text>
           </View>
@@ -151,11 +159,18 @@ export default function AddAppScreen() {
               style={styles.appRow}
               onPress={() => handleSelectApp(item)}
             >
-              <View style={styles.rowIcon}>
-                <Text style={styles.rowIconText}>
-                  {item.appName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
+              {item.iconBase64 ? (
+                <Image
+                  source={{ uri: item.iconBase64 }}
+                  style={styles.rowIconImage}
+                />
+              ) : (
+                <View style={styles.rowIcon}>
+                  <Text style={styles.rowIconText}>
+                    {item.appName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
               <View style={styles.rowInfo}>
                 <Text style={styles.rowAppName}>{item.appName}</Text>
                 <Text style={styles.rowPkg}>{item.packageName}</Text>
@@ -227,6 +242,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  rowIconImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+  },
   rowIconText: {
     fontSize: 18,
     fontWeight: '700',
@@ -259,14 +279,20 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
   bigIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+    width: 72,
+    height: 72,
+    borderRadius: 18,
     backgroundColor: '#FF47571a',
     borderWidth: 1,
     borderColor: '#FF475740',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
+  },
+  bigIconImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
     marginBottom: 12,
   },
   bigIconText: {

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Switch,
   StatusBar,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlockedApp } from '../../core/types/domain.types';
@@ -18,6 +19,7 @@ export default function HomeScreen() {
     trackerRunning,
     trackerBusy,
     shouldShowPermissionBanner,
+    permissionBannerText,
     handleToggleTracker,
     handleToggleApp,
     handleRemoveApp,
@@ -28,11 +30,18 @@ export default function HomeScreen() {
   const renderApp = ({ item }: { item: BlockedApp }) => (
     <View style={styles.card}>
       <View style={styles.cardLeft}>
-        <View style={styles.appIconPlaceholder}>
-          <Text style={styles.appIconText}>
-            {item.appName.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        {item.iconBase64 ? (
+          <Image
+            source={{ uri: item.iconBase64 }}
+            style={styles.appIconImage}
+          />
+        ) : (
+          <View style={styles.appIconPlaceholder}>
+            <Text style={styles.appIconText}>
+              {item.appName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
         <View style={styles.appInfo}>
           <Text style={styles.appName}>{item.appName}</Text>
           <Text style={styles.appMeta}>
@@ -95,7 +104,7 @@ export default function HomeScreen() {
           onPress={handleRequestPermission}
         >
           <Text style={styles.permBannerText}>
-            ⚠️ Grant Usage Access permission to enable blocking
+            {permissionBannerText}
           </Text>
         </TouchableOpacity>
       )}
@@ -229,6 +238,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#222',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  appIconImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
   },
   appIconText: {
     fontSize: 20,

@@ -1,4 +1,4 @@
-const shouldLog = __DEV__;
+const shouldLog = true;
 
 export const logger = {
   debug: (...args: unknown[]) => {

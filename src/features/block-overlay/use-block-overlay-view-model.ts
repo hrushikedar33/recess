@@ -23,10 +23,20 @@ const TIPS = [
 export function useBlockOverlayViewModel() {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<BlockRoute>();
-  const { appName, limitMinutes, usageMinutes } = route.params;
-  const cooldownMinutes = 10;
+  const {
+    appName,
+    limitMinutes,
+    cooldownMinutes,
+    usageMinutes,
+    remainingCooldownSeconds,
+  } = route.params;
 
-  const [countdown, setCountdown] = useState(cooldownMinutes * 60);
+  const initialCountdown =
+    typeof remainingCooldownSeconds === 'number' && remainingCooldownSeconds > 0
+      ? remainingCooldownSeconds
+      : cooldownMinutes * 60;
+
+  const [countdown, setCountdown] = useState(initialCountdown);
   const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)]);
 
   const [fadeAnim] = useState(() => new Animated.Value(0));

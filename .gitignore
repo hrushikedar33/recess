@@ -10,8 +10,15 @@ node_modules/
 .expo/
 
 # Build outputs
+.gradle/
+android/.gradle/
 android/app/build/
 android/build/
+android/app/.cxx/
+android/.cxx/
+android/local.properties
+*.iml
+.idea/
 ios/build/
 dist/
 build/

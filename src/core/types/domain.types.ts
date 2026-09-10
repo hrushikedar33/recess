@@ -17,5 +17,7 @@ export interface LimitReachedPayload {
   packageName: string;
   appName: string;
   limitMinutes: number;
+  cooldownMinutes: number;
   usageMinutes: number;
+  remainingCooldownSeconds?: number;
 }
