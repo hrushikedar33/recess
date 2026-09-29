@@ -112,3 +112,60 @@ describe('MonitorAdapter', () => {
     });
   });
 });
+
+describe('MonitorAdapter.getLimitEvent', () => {
+  const event = {
+    packageName: 'com.instagram.android',
+    appName: 'Instagram',
+    reason: 'SESSION_COOLDOWN',
+    blockedUntilMs: 1700000300000,
+    createdAtMs: 1700000000000,
+    quote: {
+      text: 'Confine yourself to the present.',
+      author: 'Marcus Aurelius',
+      source: 'Meditations 7.29',
+    },
+  };
+
+  it('returns the saved limit event, parsed', async () => {
+    native.getLimitEvent.mockResolvedValueOnce(JSON.stringify(event));
+
+    await expect(MonitorAdapter.getLimitEvent()).resolves.toEqual(event);
+  });
+
+  it('accepts a quote without a source', async () => {
+    const plain = { ...event, quote: { text: 'Begin.', author: 'Seneca' } };
+    native.getLimitEvent.mockResolvedValueOnce(JSON.stringify(plain));
+
+    await expect(MonitorAdapter.getLimitEvent()).resolves.toEqual(plain);
+  });
+
+  it('returns null when there is no event', async () => {
+    native.getLimitEvent.mockResolvedValueOnce(null);
+
+    await expect(MonitorAdapter.getLimitEvent()).resolves.toBeNull();
+  });
+
+  it.each([
+    ['corrupt json', '{corrupt'],
+    ['not an object', '[]'],
+    ['a missing app name', JSON.stringify({ ...event, appName: undefined })],
+    [
+      'an unknown reason',
+      JSON.stringify({ ...event, reason: 'FROM_THE_FUTURE' }),
+    ],
+    [
+      'a non-numeric end time',
+      JSON.stringify({ ...event, blockedUntilMs: 'soon' }),
+    ],
+    ['a missing quote', JSON.stringify({ ...event, quote: undefined })],
+    [
+      'a quote without an author',
+      JSON.stringify({ ...event, quote: { text: 'x' } }),
+    ],
+  ])('returns null for %s instead of throwing', async (_name, raw) => {
+    native.getLimitEvent.mockResolvedValueOnce(raw);
+
+    await expect(MonitorAdapter.getLimitEvent()).resolves.toBeNull();
+  });
+});

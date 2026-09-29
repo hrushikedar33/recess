@@ -4,6 +4,7 @@ import { BlockedApp } from '../../../core/types/domain.types';
 import {
   BlockedAppSyncPayload,
   GoalSyncPayload,
+  LimitEvent,
   MonitorConfigNativeModule,
   MonitorStatus,
 } from '../../../core/types/native.types';
@@ -21,6 +22,46 @@ const toGoalPayload = (goal: GoalSyncPayload): GoalSyncPayload => ({
   title: goal.title,
   done: goal.done,
 });
+
+const isText = (value: unknown): value is string =>
+  typeof value === 'string' && value.trim().length > 0;
+
+/** The saved event is written by native code, but anything unreadable is treated as "no event". */
+const parseLimitEvent = (raw: string | null): LimitEvent | null => {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    const quote = value.quote as Record<string, unknown> | undefined;
+    if (
+      !isText(value.packageName) ||
+      !isText(value.appName) ||
+      (value.reason !== 'SESSION_COOLDOWN' && value.reason !== 'DAILY_LIMIT') ||
+      typeof value.blockedUntilMs !== 'number' ||
+      typeof value.createdAtMs !== 'number' ||
+      !quote ||
+      !isText(quote.text) ||
+      !isText(quote.author)
+    ) {
+      return null;
+    }
+    return {
+      packageName: value.packageName,
+      appName: value.appName,
+      reason: value.reason,
+      blockedUntilMs: value.blockedUntilMs,
+      createdAtMs: value.createdAtMs,
+      quote: {
+        text: quote.text,
+        author: quote.author,
+        ...(isText(quote.source) ? { source: quote.source } : {}),
+      },
+    };
+  } catch {
+    return null;
+  }
+};
 
 const toAppError = (error: unknown): AppError => {
   if (error instanceof AppError) {
@@ -62,6 +103,9 @@ export const MonitorAdapter = {
 
   getMonitorStatus: (): Promise<MonitorStatus> =>
     call((module) => module.getMonitorStatus()),
+
+  getLimitEvent: async (): Promise<LimitEvent | null> =>
+    parseLimitEvent(await call((module) => module.getLimitEvent())),
 
   syncBlockedApps: (apps: BlockedApp[]): Promise<void> =>
     call((module) =>

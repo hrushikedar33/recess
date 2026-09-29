@@ -6,6 +6,7 @@ import AppProviders from './providers/app-providers';
 import RootNavigator from './navigation/root-navigator';
 import { navigationRef } from './navigation/navigation-ref';
 import { useStartupSync } from './hooks/use-startup-sync';
+import { linking } from './navigation/linking';
 
 export default function App() {
   useStartupSync();
@@ -13,7 +14,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.container}>
       <AppProviders>
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer ref={navigationRef} linking={linking}>
           <RootNavigator />
         </NavigationContainer>
       </AppProviders>

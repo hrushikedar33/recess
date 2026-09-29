@@ -38,9 +38,23 @@ export interface GoalSyncPayload {
   done: boolean;
 }
 
+export type LimitReason = 'SESSION_COOLDOWN' | 'DAILY_LIMIT';
+
+/** What the monitor last showed when a limit was reached; the Break screen shows the same. */
+export interface LimitEvent {
+  packageName: string;
+  appName: string;
+  reason: LimitReason;
+  blockedUntilMs: number;
+  createdAtMs: number;
+  quote: { text: string; author: string; source?: string };
+}
+
 export interface MonitorConfigNativeModule {
   setMonitoringEnabled(enabled: boolean): Promise<void>;
   getMonitorStatus(): Promise<MonitorStatus>;
+  /** The last limit event as JSON, or null if there has been none. */
+  getLimitEvent(): Promise<string | null>;
   /** JSON list of {@link BlockedAppSyncPayload}; rejects with code INVALID_CONFIG if malformed. */
   syncBlockedApps(json: string): Promise<void>;
   /** JSON list of {@link GoalSyncPayload}; rejects with code INVALID_CONFIG if malformed. */

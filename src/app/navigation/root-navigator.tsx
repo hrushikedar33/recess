@@ -3,7 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from '../../features/home/home-screen';
 import AddAppScreen from '../../features/add-app/add-app-screen';
 import GoalsScreen from '../../features/goals/goals-screen';
-import BlockOverlayScreen from '../../features/block-overlay/block-overlay-screen';
+import BreakScreen from '../../features/break/break-screen';
 import { RootStackParamList } from './types';
 import { Routes } from './routes';
 
@@ -35,13 +35,9 @@ export default function RootNavigator() {
         options={{ title: 'Goals & To-dos' }}
       />
       <Stack.Screen
-        name={Routes.BlockOverlay}
-        component={BlockOverlayScreen}
-        options={{
-          headerShown: false,
-          gestureEnabled: false,
-          presentation: 'modal',
-        }}
+        name={Routes.Break}
+        component={BreakScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
