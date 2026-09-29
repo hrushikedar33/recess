@@ -1,5 +1,7 @@
 module.exports = {
   root: true,
+  // Native projects and their build output (Gradle test reports contain generated .js files).
+  ignorePatterns: ['android/', 'ios/'],
   extends: [
     '@react-native',
     'plugin:@typescript-eslint/recommended',
