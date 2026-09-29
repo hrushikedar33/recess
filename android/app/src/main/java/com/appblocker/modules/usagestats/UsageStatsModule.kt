@@ -1,7 +1,6 @@
 package com.appblocker.modules.usagestats
 
 import android.app.AppOpsManager
-import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
@@ -15,6 +14,8 @@ import android.app.PendingIntent
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import android.provider.Settings
+import com.appblocker.detector.AndroidUsageEventSource
+import com.appblocker.detector.ForegroundAppDetector
 import com.facebook.react.bridge.*
 import java.util.concurrent.TimeUnit
 
@@ -24,6 +25,8 @@ class UsageStatsModule(private val reactContext: ReactApplicationContext) :
     companion object {
         private const val TAG = "UsageStatsModule"
     }
+
+    private val foregroundDetector by lazy { ForegroundAppDetector(AndroidUsageEventSource(reactContext)) }
 
     override fun getName() = "UsageStatsModule"
 
@@ -234,53 +237,13 @@ class UsageStatsModule(private val reactContext: ReactApplicationContext) :
     }
 
     /**
-     * Get the package name of the active foreground app in real-time.
-     * Uses UsageEvents.Event.ACTIVITY_RESUMED to ensure 100% accuracy on Android 10+.
+     * Get the package name of the active foreground app in real-time, or null when the screen is
+     * off. Delegates to [ForegroundAppDetector], which only reads new usage events on each call.
      */
     @ReactMethod
     fun getForegroundApp(promise: Promise) {
         try {
-            val pm = reactContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
-            if (pm?.isInteractive == false) {
-                promise.resolve(null)
-                return
-            }
-
-            val usm = reactContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-            val now = System.currentTimeMillis()
-
-            // Look back up to 10 minutes to find the most recent ACTIVITY_RESUMED event
-            val events = usm.queryEvents(now - 10 * 60 * 1000L, now)
-            var lastResumedPkg: String? = null
-            var lastEventTime = 0L
-
-            val event = UsageEvents.Event()
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                val type = event.eventType
-                // ACTIVITY_RESUMED (1) or MOVE_TO_FOREGROUND (1)
-                if (type == UsageEvents.Event.ACTIVITY_RESUMED || type == 1) {
-                    if (event.timeStamp >= lastEventTime) {
-                        lastEventTime = event.timeStamp
-                        lastResumedPkg = event.packageName
-                    }
-                }
-            }
-
-            // Fallback to queryUsageStats if no event was found
-            if (lastResumedPkg == null) {
-                val stats = usm.queryUsageStats(
-                    UsageStatsManager.INTERVAL_BEST,
-                    now - 60 * 1000L,
-                    now
-                )
-                lastResumedPkg = stats
-                    ?.filter { it.lastTimeUsed > 0 }
-                    ?.maxByOrNull { it.lastTimeUsed }
-                    ?.packageName
-            }
-
-            promise.resolve(lastResumedPkg)
+            promise.resolve(foregroundDetector.poll())
         } catch (e: Exception) {
             promise.reject("FOREGROUND_ERROR", e.message)
         }
