@@ -7,8 +7,11 @@ import RootNavigator from './navigation/root-navigator';
 import { navigationRef } from './navigation/navigation-ref';
 import { Routes } from './navigation/routes';
 import { LimitReachedPayload } from '../core/types/domain.types';
+import { useStartupSync } from './hooks/use-startup-sync';
 
 export default function App() {
+  useStartupSync();
+
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener(
       'APP_LIMIT_REACHED',

@@ -5,6 +5,7 @@ import { CheckUsageLimitUseCase } from '../domain/usecases/check-usage-limit-use
 import { GetBlockedAppsUseCase } from '../domain/usecases/get-blocked-apps-use-case';
 import { GetInstalledAppsUseCase } from '../domain/usecases/get-installed-apps-use-case';
 import { RemoveBlockedAppUseCase } from '../domain/usecases/remove-blocked-app-use-case';
+import { SyncBlockedAppsUseCase } from '../domain/usecases/sync-blocked-apps-use-case';
 import { ToggleBlockedAppUseCase } from '../domain/usecases/toggle-blocked-app-use-case';
 
 const blockedAppsRepository = new BlockedAppsRepository();
@@ -20,6 +21,7 @@ export const useCases = {
   addBlockedApp: new AddBlockedAppUseCase(blockedAppsRepository),
   removeBlockedApp: new RemoveBlockedAppUseCase(blockedAppsRepository),
   toggleBlockedApp: new ToggleBlockedAppUseCase(blockedAppsRepository),
+  syncBlockedApps: new SyncBlockedAppsUseCase(blockedAppsRepository),
   getInstalledApps: new GetInstalledAppsUseCase(installedAppsRepository),
   checkUsageLimit: new CheckUsageLimitUseCase(),
 };
