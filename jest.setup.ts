@@ -1,6 +1,11 @@
-import '@react-native-async-storage/async-storage/jest/async-storage-mock';
-
 import { NativeModules } from 'react-native';
+
+// Importing the mock file does not install it; the module must be replaced explicitly.
+jest.mock('@react-native-async-storage/async-storage', () =>
+  jest.requireActual(
+    '@react-native-async-storage/async-storage/jest/async-storage-mock',
+  ),
+);
 
 jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
 
