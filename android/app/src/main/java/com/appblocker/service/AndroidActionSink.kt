@@ -28,9 +28,10 @@ class AndroidActionSink(
         )
 
     /**
-     * Sends the user to the home screen. This relies on the "Display over other apps" permission,
-     * which is what lets a background service start an activity; without it the OS silently drops
-     * the intent, which the ticker's eject verification and the health probe then surface.
+     * Asks for the home screen. Best effort: many phones (this project was developed on a OnePlus
+     * running Android 16) refuse to let a background service start any activity, HOME included, and
+     * say so only in the system log. The ticker notices when it keeps not working and backs off;
+     * [blockedAppInFront] is what actually keeps the app unusable.
      */
     override fun ejectToHome(packageName: String) {
         val home =
@@ -39,6 +40,15 @@ class AndroidActionSink(
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(home)
     }
+
+    /** Covers the blocked app on screen, unless a cover is already up for it. */
+    override fun blockedAppInFront(packageName: String) {
+        if (takeover.isShowingFor(packageName)) return
+        val message = alerts.composeForBlock(packageName) ?: return
+        takeover.show(packageName, message)
+    }
+
+    override fun foregroundChanged(packageName: String?) = takeover.onForeground(packageName)
 
     /**
      * Once per block: one notification and one full-screen takeover, both showing the same quote

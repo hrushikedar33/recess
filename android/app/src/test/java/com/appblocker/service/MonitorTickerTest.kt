@@ -36,6 +36,20 @@ private class RecordingSink : ActionSink {
     val limits = mutableListOf<EngineAction.NotifyLimitReached>()
     val ended = mutableListOf<EngineAction.BlockEnded>()
     var failOnEject = false
+    val covered = mutableListOf<String>()
+    val foregrounds = mutableListOf<String?>()
+    var failOnCover = false
+    var failOnForegroundReport = false
+
+    override fun blockedAppInFront(packageName: String) {
+        if (failOnCover) throw IllegalStateException("cannot draw the cover")
+        covered += packageName
+    }
+
+    override fun foregroundChanged(packageName: String?) {
+        if (failOnForegroundReport) throw IllegalStateException("cannot report")
+        foregrounds += packageName
+    }
 
     override fun ejectToHome(packageName: String) {
         if (failOnEject) throw IllegalStateException("cannot start home")
@@ -210,14 +224,87 @@ class MonitorTickerTest {
     }
 
     @Test
-    fun `ten more seconds in the blocked app keep ejecting at the throttled pace but never report again`() {
+    fun `ten more seconds in the blocked app eject at the throttled pace, then back off, and never report again`() {
         enableWithInstagramRule()
         run(61)
 
         run(10)
 
-        assertEquals(6, sink.ejected.size)
+        // One every 2 s while it might work; the fifth is unanswered, so the phone is refusing and
+        // further tries become rare (they only spam the system log).
+        assertEquals(5, sink.ejected.size)
         assertEquals(1, sink.limits.size)
+    }
+
+    // ---- covering the blocked app ------------------------------------------------------------
+
+    @Test
+    fun `the blocked app is covered on every tick it stays in front, whatever the eject throttle says`() {
+        enableWithInstagramRule()
+        run(61)
+
+        run(10)
+
+        assertEquals(11, sink.covered.size)
+        assertTrue(sink.covered.all { it == INSTAGRAM })
+    }
+
+    @Test
+    fun `nothing is covered while the blocked app is not in front`() {
+        enableWithInstagramRule()
+        run(61)
+        val coveredSoFar = sink.covered.size
+        foreground = "com.oneplus.launcher"
+
+        run(10)
+
+        assertEquals(coveredSoFar, sink.covered.size)
+    }
+
+    @Test
+    fun `nothing is covered before the limit is reached`() {
+        enableWithInstagramRule()
+
+        run(30)
+
+        assertTrue(sink.covered.isEmpty())
+    }
+
+    @Test
+    fun `a cover that cannot be drawn does not stop the attempt to go home`() {
+        enableWithInstagramRule()
+        sink.failOnCover = true
+
+        run(61)
+
+        assertEquals(listOf(INSTAGRAM), sink.ejected)
+        assertEquals(1, sink.limits.size)
+        assertTrue(errors.isNotEmpty())
+    }
+
+    @Test
+    fun `the sink is told when the app in front changes, once per change`() {
+        enableWithInstagramRule()
+        run(2)
+        foreground = "com.oneplus.launcher"
+        run(3)
+        foreground = null
+        run(2)
+        foreground = INSTAGRAM
+        run(1)
+
+        assertEquals(listOf(INSTAGRAM, "com.oneplus.launcher", null, INSTAGRAM), sink.foregrounds)
+    }
+
+    @Test
+    fun `a failing report of the front app does not stop the tick`() {
+        enableWithInstagramRule()
+        sink.failOnForegroundReport = true
+
+        run(61)
+
+        assertEquals(1, sink.limits.size)
+        assertTrue(errors.isNotEmpty())
     }
 
     @Test

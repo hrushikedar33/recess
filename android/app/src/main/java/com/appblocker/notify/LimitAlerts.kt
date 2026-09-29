@@ -1,5 +1,6 @@
 package com.appblocker.notify
 
+import com.appblocker.engine.BlockReason
 import com.appblocker.engine.EngineAction
 import com.appblocker.quotes.QuoteRepository
 import com.appblocker.store.RecessPrefs
@@ -31,5 +32,30 @@ class LimitAlerts(
             ),
         )
         return message
+    }
+
+    /**
+     * The message for an app that is already blocked and has been opened again, built from what is
+     * stored: who is blocked, until when, and why. Null if the app is not blocked right now. It
+     * shows the same quote as the notification did and never overwrites the saved limit event.
+     */
+    fun composeForBlock(packageName: String): LimitMessage? {
+        val usage = prefs.engineState().apps[packageName] ?: return null
+        val blockedUntilMs = usage.blockedUntilMs ?: return null
+        if (blockedUntilMs <= clock()) return null
+
+        val appName = prefs.blockedApps().firstOrNull { it.packageName == packageName }?.appName ?: packageName
+        val event =
+            EngineAction.NotifyLimitReached(
+                packageName = packageName,
+                appName = appName,
+                reason = usage.blockReason ?: BlockReason.SESSION_COOLDOWN,
+                blockedUntilMs = blockedUntilMs,
+                sessionUsedMs = usage.sessionUsedMs,
+                dailyUsedMs = usage.dailyUsedMs,
+            )
+        val saved = LimitEventSnapshotCodec.decode(prefs.lastLimitEventJson())
+        val quote = saved?.takeIf { it.packageName == packageName }?.quote ?: quotes().next()
+        return LimitMessageFormatter.format(event, quote, prefs.goals(), formatTime)
     }
 }

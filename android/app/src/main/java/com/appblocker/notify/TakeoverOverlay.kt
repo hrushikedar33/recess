@@ -25,16 +25,19 @@ import java.util.concurrent.FutureTask
 import java.util.concurrent.TimeUnit
 
 /**
- * The full-screen "time's up" screen: the quote and the goals drawn over everything, right after the
- * blocked app was sent home.
+ * The full-screen cover for a blocked app: the quote and the goals drawn over everything, so the
+ * app cannot be used until its cooldown ends.
  *
  * It is a plain window added by the service (using the "Display over other apps" permission the
- * user already grants for Recess), not an activity. That matters: since Android 10 a background
- * service is often refused when it tries to *start an activity*, so a takeover built on the Break
- * screen could silently fail; adding a window has no such restriction.
+ * user already grants for Recess), not an activity. That matters: many phones refuse to let a
+ * background service *start an activity* (including the home screen), so anything built on that
+ * silently fails; adding a window has no such restriction.
  *
- * It never traps the user: there is always a "Go home" button, it goes away by itself after
- * [AUTO_DISMISS_MS] and when the block ends, and it is removed when the service stops.
+ * It is shown when the limit is hit and again whenever the blocked app comes to the front during the
+ * block, and it lifts as soon as another app (the home screen, say) is in front, when the block
+ * ends, and when the service stops. It never traps the user: the Home button always works, there is
+ * a "Go home" button, and it drops itself after [AUTO_DISMISS_MS] (if the app is still blocked and
+ * in front it simply comes back on the next tick).
  */
 class TakeoverOverlay(context: Context) {
     private val context = context.applicationContext
@@ -42,9 +45,20 @@ class TakeoverOverlay(context: Context) {
     private val windowManager = this.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val expire = Runnable { removeNow() }
 
-    // Only touched on the main thread.
+    // Only changed on the main thread; read from the monitor thread.
     private var root: View? = null
+
+    @Volatile
     private var shownFor: String? = null
+
+    fun isShowingFor(packageName: String): Boolean = shownFor == packageName
+
+    /** The app in front changed: lift the cover once it is no longer the blocked app. */
+    fun onForeground(packageName: String?) {
+        val covered = shownFor ?: return
+        if (packageName == covered) return
+        main.post { if (shownFor == covered) removeNow() }
+    }
 
     /** Called from the monitor thread. True if the takeover is now on screen. */
     fun show(packageName: String, message: LimitMessage): Boolean {
@@ -212,7 +226,7 @@ class TakeoverOverlay(context: Context) {
 
     private companion object {
         const val TAG = "Recess"
-        const val AUTO_DISMISS_MS = 60_000L
+        const val AUTO_DISMISS_MS = 10 * 60_000L
         const val MAIN_THREAD_WAIT_MS = 2_000L
         val BACKGROUND = Color.parseColor("#101418")
         val ACCENT = Color.parseColor("#7BD3C3")

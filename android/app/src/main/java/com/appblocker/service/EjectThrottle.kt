@@ -4,12 +4,14 @@ package com.appblocker.service
  * Decides whether an eject (a HOME intent) should really be sent. Usage events lag a little, so the
  * blocked app is still "in front" for a tick or two after HOME; sending HOME every tick would reset
  * the launcher over and over. It also notices when ejecting is not working: the same app coming back
- * again and again means the OS is dropping the HOME intent (or something is fighting it).
+ * again and again means the OS is dropping the HOME intent (or something is fighting it); from then
+ * on it is only retried now and then.
  */
 class EjectThrottle(
     private val minIntervalMs: Long = MIN_INTERVAL_MS,
     private val ineffectiveAfter: Int = INEFFECTIVE_AFTER,
     private val resetAfterMs: Long = RESET_AFTER_MS,
+    private val slowIntervalMs: Long = SLOW_INTERVAL_MS,
 ) {
     data class Verdict(val send: Boolean, val ineffective: Boolean)
 
@@ -36,7 +38,10 @@ class EjectThrottle(
 
         if (nowMs - state.lastSeenAtMs > resetAfterMs) state.streak = 0
         state.lastSeenAtMs = nowMs
-        if (nowMs - state.lastSentAtMs < minIntervalMs) {
+        // Once it has plainly failed a few times in a row the phone is refusing (Android often does
+        // for background apps), so keep trying, but rarely, instead of filling the system log.
+        val interval = if (state.streak >= ineffectiveAfter) slowIntervalMs else minIntervalMs
+        if (nowMs - state.lastSentAtMs < interval) {
             return Verdict(send = false, ineffective = state.streak >= ineffectiveAfter)
         }
         state.streak += 1
@@ -48,5 +53,6 @@ class EjectThrottle(
         const val MIN_INTERVAL_MS = 1_500L
         const val INEFFECTIVE_AFTER = 5
         const val RESET_AFTER_MS = 10_000L
+        const val SLOW_INTERVAL_MS = 30_000L
     }
 }

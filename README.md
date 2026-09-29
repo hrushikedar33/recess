@@ -6,13 +6,15 @@ in the spirit of Opal. Pick the apps, give each a **session limit**, a **cooldow
 
 When a limit is reached, Recess:
 
-1. sends the app to the **home screen** (and keeps doing so until the cooldown ends),
-2. posts **one** notification: the quote is on its first line, and expanding it shows your
-   unfinished goals and when the app opens again, and
-3. covers the screen with a full-screen **time's-up window** showing the quote, your goals and
-   when the app opens again. **Go home** closes it; **Open Recess** opens the Break screen (live
-   countdown, goals you can tick off). It also closes by itself after a minute and when the block
-   ends. Tapping the notification opens the Break screen too.
+1. posts **one** notification: the quote is on its first line, and expanding it shows your
+   unfinished goals and when the app opens again,
+2. covers the screen with a full-screen **window** showing the quote, your goals and when the app
+   opens again, and tries to send the app to the home screen, and
+3. **keeps the app unusable for the whole cooldown**: every time the paused app comes to the front
+   again (from Recents, a notification, anywhere), the same window covers it within about a second.
+   It lifts as soon as you leave the app (for example with the Home button), when the cooldown
+   ends, or when you turn Recess off. Its **Open Recess** button opens the Break screen (live
+   countdown, goals you can tick off), which the notification opens too.
 
 ## How it works
 
@@ -51,9 +53,11 @@ The daily budget must be at least one session. If both trip on the same tick the
 
 Being honest about the limits is part of the design:
 
-- **It cannot kill another app.** Since Android 14 only the system can. Recess sends the blocked
-  app to the home screen every time it comes to the front during the cooldown (about a second
-  after it appears).
+- **It cannot kill another app, and many phones will not even let it open the home screen.** Since
+  Android 14 only the system can kill apps, and some phones (a OnePlus on Android 16 was the test
+  device) refuse every attempt by a background service to start the home screen. Recess still
+  tries, backs off when it is refused, and relies on the cover window instead. The app stays
+  running underneath, so its sound may keep playing until you leave it.
 - **"Force stop" in system settings stops Recess for good** until you open it again. Android
   guarantees this. Recess notices on the next open (and says so), and restarts itself after a
   reboot or an app update, but it cannot prevent a force stop.
@@ -198,9 +202,10 @@ The "announce once, then only eject" rule, cooldown across restarts, midnight an
 proven by tests rather than eyeballed. Engine state is saved as JSON and restored after a restart,
 so killing the process cannot be used to skip a cooldown.
 
-**AD5 - "Kill" is "send home, every time, until the cooldown ends".** Android does not allow
-killing other apps (see above). The block is announced once; after that only the eject repeats,
-throttled to one per 1.5 s.
+**AD5 - "Kill" is "keep it covered until the cooldown ends".** Android does not allow killing other
+apps, and on some phones not even sending them home. The block is announced once; after that,
+every tick the blocked app is in front the cover window is (idempotently) put up, and a HOME
+intent is tried at most every 1.5 s, or every 30 s once the phone has clearly refused it.
 
 **AD6 - Bundled quotes first; online quotes are an opt-in extra.** The service must work with no
 network at the moment a limit is hit. Fetched quotes are treated as hostile input (allowlist,

@@ -41,6 +41,8 @@ class MonitorTicker(
     private var rulesUnreadable = false
     private var pollFailing = false
     private var lastIneffectiveEjectMs: Long? = null
+    private var foregroundReported = false
+    private var reportedForeground: String? = null
 
     fun tick(): TickOutcome =
         try {
@@ -81,6 +83,7 @@ class MonitorTicker(
         }
 
         ejectThrottle.noteForeground(foreground)
+        reportForeground(foreground)
         // Ticked even when nothing was polled, so a pending block end is never missed.
         engine.tick(nowMs, foreground, rules).forEach { perform(it, nowMs) }
         persistIfDue(nowMs)
@@ -122,7 +125,26 @@ class MonitorTicker(
         }
     }
 
+    /** Tells the sink when the app in front changes; a failed report is retried on the next tick. */
+    private fun reportForeground(current: String?) {
+        if (foregroundReported && current == reportedForeground) return
+        try {
+            sink.foregroundChanged(current)
+            foregroundReported = true
+            reportedForeground = current
+        } catch (e: Exception) {
+            onError("Could not report the foreground app", e)
+        }
+    }
+
     private fun eject(packageName: String, nowMs: Long) {
+        // The cover is what really keeps the app unusable, so it is drawn on every tick and does not
+        // wait for the eject throttle; a failure to draw it must not cost the attempt to go home.
+        try {
+            sink.blockedAppInFront(packageName)
+        } catch (e: Exception) {
+            onError("Could not cover the blocked app", e)
+        }
         val verdict = ejectThrottle.onEject(packageName, nowMs)
         if (verdict.ineffective) lastIneffectiveEjectMs = nowMs
         if (verdict.send) sink.ejectToHome(packageName)

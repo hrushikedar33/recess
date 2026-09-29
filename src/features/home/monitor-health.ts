@@ -28,7 +28,7 @@ const MESSAGES: Record<string, string> = {
     'Recess could not read its own settings, so it kept monitoring to be safe.',
   POLL_FAILING: 'Recess cannot read app usage right now.',
   EJECT_INEFFECTIVE:
-    'Sending you to the home screen is not working. Check "Display over other apps".',
+    'This phone is refusing to open the home screen for Recess, so a paused app is covered by a full-screen window instead. Use the Home button to leave it.',
 };
 
 /** A check-in older than this while "running" suggests the monitor is stuck. */

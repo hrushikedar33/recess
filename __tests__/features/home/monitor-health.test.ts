@@ -90,6 +90,19 @@ describe('describeMonitorHealth', () => {
     expect(message).not.toContain(issue);
   });
 
+  it('explains a refused home-screen launch honestly: the cover is used and the Home button leaves', () => {
+    const [message] = describeMonitorHealth(
+      status({ health: ['EJECT_INEFFECTIVE'] }),
+      NOW,
+    ).details;
+
+    expect(message).toContain('refusing');
+    expect(message).toContain('full-screen');
+    expect(message).toContain('Home button');
+    // The permission is not the problem when the phone itself refuses, so do not send the user there.
+    expect(message).not.toContain('Display over other apps');
+  });
+
   it('still shows a problem it does not recognise, rather than hiding it', () => {
     const result = describeMonitorHealth(
       status({ health: ['FROM_A_NEWER_VERSION'] }),
