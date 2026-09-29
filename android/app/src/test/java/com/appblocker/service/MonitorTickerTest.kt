@@ -57,6 +57,11 @@ private class CountingStore(private val inner: KeyValueStore) : KeyValueStore by
         stringWrites[key] = (stringWrites[key] ?: 0) + 1
         inner.putString(key, value)
     }
+
+    override fun putStringDurable(key: String, value: String): Boolean {
+        stringWrites[key] = (stringWrites[key] ?: 0) + 1
+        return inner.putStringDurable(key, value)
+    }
 }
 
 class MonitorTickerTest {

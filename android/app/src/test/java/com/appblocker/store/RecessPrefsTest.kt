@@ -146,26 +146,26 @@ class RecessPrefsTest {
     // ---- liveness --------------------------------------------------------------------------
 
     @Test
-    fun `with no heartbeat the service is not running`() {
+    fun `with no heartbeat there is nothing fresh`() {
         assertNull(prefs.lastHeartbeatAt())
-        assertFalse(prefs.isRunning())
+        assertFalse(prefs.isHeartbeatFresh())
     }
 
     @Test
-    fun `a fresh heartbeat means running`() {
+    fun `a fresh heartbeat is fresh`() {
         prefs.recordHeartbeat()
         now = T0 + RecessPrefs.HEARTBEAT_STALE_MS - 1
 
         assertEquals(T0, prefs.lastHeartbeatAt())
-        assertTrue(prefs.isRunning())
+        assertTrue(prefs.isHeartbeatFresh())
     }
 
     @Test
-    fun `a stale heartbeat means not running`() {
+    fun `a stale heartbeat is not fresh`() {
         prefs.recordHeartbeat()
         now = T0 + RecessPrefs.HEARTBEAT_STALE_MS + 1
 
-        assertFalse(prefs.isRunning())
+        assertFalse(prefs.isHeartbeatFresh())
     }
 
     @Test
@@ -178,12 +178,20 @@ class RecessPrefsTest {
     }
 
     @Test
-    fun `status reports intent, liveness and the last stop reason together`() {
+    fun `status reports intent, the live running flag, heartbeat and last stop reason together`() {
         prefs.setMonitoringEnabled(true)
         prefs.recordHeartbeat()
         prefs.recordStopReason("destroyed")
 
-        assertEquals(MonitorStatus(true, true, T0, "destroyed"), prefs.status())
+        assertEquals(MonitorStatus(true, true, T0, "destroyed", emptyList()), prefs.status(running = true))
+    }
+
+    @Test
+    fun `the running flag in status comes from the caller, not from the heartbeat`() {
+        prefs.setMonitoringEnabled(true)
+        prefs.recordHeartbeat()
+
+        assertFalse(prefs.status(running = false).running)
     }
 
     // ---- change detection for the monitor --------------------------------------------------
@@ -225,5 +233,85 @@ class RecessPrefsTest {
         prefs.setMonitoringEnabled(false)
 
         assertEquals(0L, prefs.configVersion())
+    }
+
+    // ---- a durable, verifiable intent -------------------------------------------------------
+
+    @Test
+    fun `the intent is unknown until it has ever been written`() {
+        assertFalse(prefs.isIntentKnown())
+    }
+
+    @Test
+    fun `writing the intent, on or off, makes it known`() {
+        prefs.setMonitoringEnabled(false)
+
+        assertTrue(restarted().isIntentKnown())
+    }
+
+    @Test
+    fun `an intent that cannot be persisted is reported instead of pretending it worked`() {
+        store.failDurableWrites = true
+
+        assertThrows(IllegalStateException::class.java) { prefs.setMonitoringEnabled(true) }
+        assertFalse(prefs.isMonitoringEnabled())
+    }
+
+    // ---- health ----------------------------------------------------------------------------
+
+    @Test
+    fun `there are no health issues until some are recorded`() {
+        assertTrue(prefs.healthIssues().isEmpty())
+    }
+
+    @Test
+    fun `recorded health issues survive a restart and appear in status`() {
+        prefs.saveHealthIssues(setOf(HealthIssue.USAGE_ACCESS_MISSING, HealthIssue.OVERLAY_MISSING))
+
+        assertEquals(
+            setOf(HealthIssue.USAGE_ACCESS_MISSING, HealthIssue.OVERLAY_MISSING),
+            restarted().healthIssues(),
+        )
+        assertEquals(
+            listOf("OVERLAY_MISSING", "USAGE_ACCESS_MISSING"),
+            prefs.status(running = true).health,
+        )
+    }
+
+    @Test
+    fun `recording no issues clears the earlier ones`() {
+        prefs.saveHealthIssues(setOf(HealthIssue.OVERLAY_MISSING))
+
+        prefs.saveHealthIssues(emptySet())
+
+        assertTrue(prefs.healthIssues().isEmpty())
+    }
+
+    @Test
+    fun `unknown names in stored health are ignored`() {
+        store.putString("healthIssues", "OVERLAY_MISSING,FROM_A_FUTURE_VERSION,")
+
+        assertEquals(setOf(HealthIssue.OVERLAY_MISSING), prefs.healthIssues())
+    }
+
+    // ---- unreadable rules ------------------------------------------------------------------
+
+    @Test
+    fun `rules that were never saved are not unreadable`() {
+        assertFalse(prefs.hasUnreadableRules())
+    }
+
+    @Test
+    fun `saved rules are not unreadable`() {
+        prefs.saveBlockedApps(ONE_APP)
+
+        assertFalse(prefs.hasUnreadableRules())
+    }
+
+    @Test
+    fun `stored rules that fail to parse are flagged instead of silently reading as none`() {
+        store.putString("blockedAppsJson", "{corrupt")
+
+        assertTrue(prefs.hasUnreadableRules())
     }
 }

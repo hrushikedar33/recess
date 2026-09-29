@@ -16,8 +16,11 @@ interface KeyValueStore {
 
     fun putString(key: String, value: String)
 
-    /** Flags are written synchronously: losing one to a process kill is the bug being fixed. */
-    fun putBoolean(key: String, value: Boolean)
+    /** Written synchronously, so a process kill right after cannot lose it. False if it was not saved. */
+    fun putStringDurable(key: String, value: String): Boolean
+
+    /** Flags are written synchronously: losing one to a process kill is the bug being fixed. False if not saved. */
+    fun putBoolean(key: String, value: Boolean): Boolean
 
     fun putLong(key: String, value: Long)
 }
@@ -33,9 +36,11 @@ class SharedPreferencesStore(private val prefs: SharedPreferences) : KeyValueSto
         prefs.edit().putString(key, value).apply()
     }
 
-    override fun putBoolean(key: String, value: Boolean) {
+    override fun putStringDurable(key: String, value: String): Boolean =
+        prefs.edit().putString(key, value).commit()
+
+    override fun putBoolean(key: String, value: Boolean): Boolean =
         prefs.edit().putBoolean(key, value).commit()
-    }
 
     override fun putLong(key: String, value: Long) {
         prefs.edit().putLong(key, value).apply()

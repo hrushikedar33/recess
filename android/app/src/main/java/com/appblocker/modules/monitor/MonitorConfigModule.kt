@@ -1,6 +1,7 @@
 package com.appblocker.modules.monitor
 
 import android.util.Log
+import com.appblocker.service.MonitorRuntime
 import com.appblocker.store.ConfigFormatException
 import com.appblocker.store.RecessPrefs
 import com.appblocker.store.RecessPrefsFactory
@@ -44,7 +45,7 @@ class MonitorConfigModule(reactContext: ReactApplicationContext) :
     @ReactMethod
     fun getMonitorStatus(promise: Promise) {
         try {
-            val status = prefs.status()
+            val status = prefs.status(MonitorRuntime.isRunning)
             val map = Arguments.createMap()
             map.putBoolean("enabled", status.enabled)
             map.putBoolean("running", status.running)
@@ -52,6 +53,7 @@ class MonitorConfigModule(reactContext: ReactApplicationContext) :
             if (heartbeat != null) map.putDouble("lastHeartbeatAt", heartbeat.toDouble()) else map.putNull("lastHeartbeatAt")
             val reason = status.lastStopReason
             if (reason != null) map.putString("lastStopReason", reason) else map.putNull("lastStopReason")
+            map.putArray("health", Arguments.fromList(status.health))
             promise.resolve(map)
         } catch (e: Exception) {
             promise.reject(ERROR_MONITOR, e.message, e)

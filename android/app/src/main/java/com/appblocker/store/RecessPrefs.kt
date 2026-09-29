@@ -8,6 +8,7 @@ data class MonitorStatus(
     val running: Boolean,
     val lastHeartbeatAt: Long?,
     val lastStopReason: String?,
+    val health: List<String>,
 )
 
 /**
@@ -23,7 +24,15 @@ class RecessPrefs(
 ) {
     fun isMonitoringEnabled(): Boolean = store.getBoolean(KEY_ENABLED, false)
 
-    fun setMonitoringEnabled(enabled: Boolean) = store.putBoolean(KEY_ENABLED, enabled)
+    /**
+     * Writes the user's intent durably and remembers that it was ever written, so "off because the
+     * user said so" can be told apart from "off because the storage could not be read".
+     * Throws if the write did not reach storage: the caller must not pretend it worked.
+     */
+    fun setMonitoringEnabled(enabled: Boolean) {
+        check(store.putBoolean(KEY_ENABLED, enabled)) { "Could not persist the monitoring intent" }
+        store.putLong(KEY_INTENT_UPDATED_AT, clock())
+    }
 
     fun blockedApps(): List<BlockedAppConfig> =
         readOrEmpty(KEY_BLOCKED_APPS, ConfigCodec::parseBlockedApps)
@@ -52,24 +61,60 @@ class RecessPrefs(
 
     fun engineState(): EngineState = EngineStateCodec.decode(store.getString(KEY_ENGINE_STATE))
 
-    fun saveEngineState(state: EngineState) = store.putString(KEY_ENGINE_STATE, EngineStateCodec.encode(state))
+    /** Durable: a block that is lost to a process kill would let a cooldown be evaded. */
+    fun saveEngineState(state: EngineState) {
+        store.putStringDurable(KEY_ENGINE_STATE, EngineStateCodec.encode(state))
+    }
 
     fun recordHeartbeat() = store.putLong(KEY_HEARTBEAT, clock())
 
     fun lastHeartbeatAt(): Long? = store.getLong(KEY_HEARTBEAT)
 
-    /** Liveness is inferred from the heartbeat, which the service writes while it runs. */
-    fun isRunning(): Boolean {
+    /** Whether the service wrote a heartbeat recently. Only a hang signal: it can look stale during deep sleep. */
+    fun isHeartbeatFresh(): Boolean {
         val heartbeat = lastHeartbeatAt() ?: return false
         return clock() - heartbeat <= HEARTBEAT_STALE_MS
     }
 
-    fun recordStopReason(reason: String) = store.putString(KEY_STOP_REASON, reason)
+    fun recordStopReason(reason: String) {
+        store.putStringDurable(KEY_STOP_REASON, reason)
+    }
 
     fun lastStopReason(): String? = store.getString(KEY_STOP_REASON)
 
-    fun status(): MonitorStatus =
-        MonitorStatus(isMonitoringEnabled(), isRunning(), lastHeartbeatAt(), lastStopReason())
+    /** [running] is the live in-process flag, which is exact; the heartbeat is not. */
+    fun status(running: Boolean): MonitorStatus =
+        MonitorStatus(
+            isMonitoringEnabled(),
+            running,
+            lastHeartbeatAt(),
+            lastStopReason(),
+            healthIssues().map { it.name }.sorted(),
+        )
+
+    /** False if the intent was never written, i.e. an "off" here may just mean unreadable storage. */
+    fun isIntentKnown(): Boolean = store.getLong(KEY_INTENT_UPDATED_AT) != null
+
+    fun healthIssues(): Set<HealthIssue> =
+        store.getString(KEY_HEALTH)
+            .orEmpty()
+            .split(',')
+            .mapNotNull { name -> HealthIssue.values().firstOrNull { it.name == name.trim() } }
+            .toSet()
+
+    fun saveHealthIssues(issues: Set<HealthIssue>) =
+        store.putString(KEY_HEALTH, issues.map { it.name }.sorted().joinToString(","))
+
+    /** True when rules are stored but cannot be read, which would otherwise look like "no rules". */
+    fun hasUnreadableRules(): Boolean {
+        val stored = store.getString(KEY_BLOCKED_APPS) ?: return false
+        return try {
+            ConfigCodec.parseBlockedApps(stored)
+            false
+        } catch (e: ConfigFormatException) {
+            true
+        }
+    }
 
     private fun advanceConfigVersion() = store.putLong(KEY_CONFIG_VERSION, configVersion() + 1)
 
@@ -93,6 +138,8 @@ class RecessPrefs(
         private const val KEY_CONFIG_VERSION = "configVersion"
         private const val KEY_ENGINE_STATE = "engineStateJson"
         private const val KEY_HEARTBEAT = "lastHeartbeatAt"
+        private const val KEY_INTENT_UPDATED_AT = "intentUpdatedAt"
+        private const val KEY_HEALTH = "healthIssues"
         private const val KEY_STOP_REASON = "lastStopReason"
     }
 }
