@@ -117,7 +117,7 @@ class ForegroundReducerTest {
 
     @Test
     fun `after a long gap the window is capped at the bootstrap lookback`() {
-        val now = 10_000_000L
+        val now = 100_000_000L // more than a day after the epoch, so the cap is well inside the timeline
 
         val start = ForegroundReducer.windowStartMs(nowMs = now, previousQueryEndMs = 1_000L)
 

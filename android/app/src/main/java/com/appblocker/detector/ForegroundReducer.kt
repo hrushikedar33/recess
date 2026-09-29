@@ -11,8 +11,12 @@ data class ForegroundState(
 }
 
 object ForegroundReducer {
-    /** First poll looks this far back to learn what is already in front. */
-    const val BOOTSTRAP_LOOKBACK_MS = 10 * 60 * 1000L
+    /**
+     * First poll (and the first poll after a long pause) looks this far back to learn what is
+     * already in front. An app that has been open longer than this window has no recent resume
+     * event, so a short window would leave it invisible until the user switches away.
+     */
+    const val BOOTSTRAP_LOOKBACK_MS = 6 * 60 * 60 * 1000L
 
     /** Later polls re-read this much before the previous query, in case events arrive late. */
     const val OVERLAP_MS = 5_000L

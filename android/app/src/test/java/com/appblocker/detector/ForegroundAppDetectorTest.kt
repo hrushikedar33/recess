@@ -172,4 +172,32 @@ class ForegroundAppDetectorTest {
         assertEquals(INSTAGRAM, result)
         assertEquals(ForegroundReducer.BOOTSTRAP_LOOKBACK_MS, end - begin)
     }
+
+    @Test
+    fun `an app that has simply been open for hours is still found after a restart`() {
+        source.events = listOf(resumed(INSTAGRAM, T0 - 3 * 60 * 60 * 1000L))
+
+        assertEquals(INSTAGRAM, detector.poll())
+    }
+
+    @Test
+    fun `usage stats that found nothing are not asked again on every poll`() {
+        detector.poll()
+        now = T0 + 1_000L
+        detector.poll()
+        now = T0 + 2_000L
+        detector.poll()
+
+        assertEquals(1, source.fallbackQueries)
+    }
+
+    @Test
+    fun `usage stats are asked again after a while if there is still nothing`() {
+        detector.poll()
+
+        now = T0 + 31_000L
+        detector.poll()
+
+        assertEquals(2, source.fallbackQueries)
+    }
 }

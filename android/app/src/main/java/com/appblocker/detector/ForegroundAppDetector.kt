@@ -11,6 +11,7 @@ class ForegroundAppDetector(
 ) {
     private var state = ForegroundState.UNKNOWN
     private var previousQueryEndMs: Long? = null
+    private var lastFallbackAttemptMs: Long? = null
 
     /** The foreground package, or null when the screen is off or nothing is known. */
     fun poll(): String? {
@@ -22,7 +23,8 @@ class ForegroundAppDetector(
         // Only after a successful query, so a failure is retried over the same window.
         previousQueryEndMs = nowMs
 
-        if (state.packageName == null) {
+        if (state.packageName == null && fallbackIsDue(nowMs)) {
+            lastFallbackAttemptMs = nowMs
             source.mostRecentlyUsedPackage(nowMs - FALLBACK_LOOKBACK_MS, nowMs)?.let {
                 state = ForegroundState(it, nowMs)
             }
@@ -30,7 +32,14 @@ class ForegroundAppDetector(
         return state.packageName
     }
 
+    /** Not every poll: with nothing to find (or permission revoked) that would hammer the OS. */
+    private fun fallbackIsDue(nowMs: Long): Boolean {
+        val last = lastFallbackAttemptMs ?: return true
+        return nowMs - last >= FALLBACK_RETRY_MS
+    }
+
     private companion object {
         const val FALLBACK_LOOKBACK_MS = 60 * 1000L
+        const val FALLBACK_RETRY_MS = 30 * 1000L
     }
 }

@@ -1,6 +1,7 @@
 package com.appblocker.detector
 
 import android.app.usage.UsageEvents
+import android.app.KeyguardManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.os.PowerManager
@@ -10,10 +11,12 @@ import android.util.Log
 class AndroidUsageEventSource(context: Context) : UsageEventSource {
     private val usageStats = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
     private val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+    private val keyguard = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
     private var loggedSteadyWindow = false
 
-    // Same as before the extraction: only a screen that is known to be off counts as "not interactive".
-    override fun isInteractive(): Boolean = power?.isInteractive != false
+    // The lock screen counts as "not using an app": glancing at notifications must not be charged to
+    // whichever app was last in front, and ejecting under the keyguard achieves nothing.
+    override fun isInteractive(): Boolean = power?.isInteractive != false && keyguard?.isKeyguardLocked != true
 
     override fun queryEvents(beginMs: Long, endMs: Long): List<UsageEventRecord> {
         logSteadyStateWindowOnce(endMs - beginMs)
