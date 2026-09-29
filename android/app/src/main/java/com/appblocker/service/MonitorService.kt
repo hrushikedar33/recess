@@ -16,7 +16,10 @@ import com.appblocker.detector.AndroidUsageEventSource
 import com.appblocker.detector.ForegroundAppDetector
 import com.appblocker.engine.CalendarDayClock
 import com.appblocker.engine.EnforcementEngine
+import com.appblocker.notify.LimitAlerts
 import com.appblocker.notify.LimitNotifier
+import com.appblocker.quotes.QuoteAssets
+import com.appblocker.quotes.QuoteRepository
 import com.appblocker.store.RecessPrefs
 import com.appblocker.store.RecessPrefsFactory
 import java.text.DateFormat
@@ -152,10 +155,16 @@ class MonitorService : Service() {
             pollForeground = detector::poll,
             isScreenOn = source::isInteractive,
             healthProbe = AndroidHealthProbe(this),
-            sink = AndroidActionSink(this, LimitNotifier(this)),
+            sink = AndroidActionSink(this, LimitNotifier(this), buildLimitAlerts()),
             clock = System::currentTimeMillis,
             onError = { message, error -> Log.w(TAG, message, error) },
         )
+    }
+
+    private fun buildLimitAlerts(): LimitAlerts {
+        val quotes = QuoteRepository(QuoteAssets.load(this), RecessPrefsFactory.store(this))
+        val timeFormat = DateFormat.getTimeInstance(DateFormat.SHORT)
+        return LimitAlerts(quotes, prefs, System::currentTimeMillis) { timeFormat.format(Date(it)) }
     }
 
     /**

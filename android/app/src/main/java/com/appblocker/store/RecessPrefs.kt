@@ -59,6 +59,13 @@ class RecessPrefs(
      */
     fun configVersion(): Long = store.getLong(KEY_CONFIG_VERSION) ?: 0L
 
+    /** The most recent limit event, kept so the Break screen can show what the notification showed. */
+    fun saveLimitEvent(json: String) {
+        store.putStringDurable(KEY_LIMIT_EVENT, json)
+    }
+
+    fun lastLimitEventJson(): String? = store.getString(KEY_LIMIT_EVENT)
+
     fun engineState(): EngineState = EngineStateCodec.decode(store.getString(KEY_ENGINE_STATE))
 
     /** Durable: a block that is lost to a process kill would let a cooldown be evaded. */
@@ -140,6 +147,7 @@ class RecessPrefs(
         private const val KEY_HEARTBEAT = "lastHeartbeatAt"
         private const val KEY_INTENT_UPDATED_AT = "intentUpdatedAt"
         private const val KEY_HEALTH = "healthIssues"
+        private const val KEY_LIMIT_EVENT = "lastLimitEventJson"
         private const val KEY_STOP_REASON = "lastStopReason"
     }
 }

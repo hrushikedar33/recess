@@ -314,4 +314,26 @@ class RecessPrefsTest {
 
         assertTrue(prefs.hasUnreadableRules())
     }
+
+    // ---- the last limit event ----------------------------------------------------------------
+
+    @Test
+    fun `there is no limit event until one is saved`() {
+        assertNull(prefs.lastLimitEventJson())
+    }
+
+    @Test
+    fun `a saved limit event is readable after a restart`() {
+        prefs.saveLimitEvent("""{"appName":"Instagram"}""")
+
+        assertEquals("""{"appName":"Instagram"}""", restarted().lastLimitEventJson())
+    }
+
+    @Test
+    fun `a newer limit event replaces the older one`() {
+        prefs.saveLimitEvent("one")
+        prefs.saveLimitEvent("two")
+
+        assertEquals("two", prefs.lastLimitEventJson())
+    }
 }

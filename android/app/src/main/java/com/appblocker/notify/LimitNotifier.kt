@@ -2,22 +2,17 @@ package com.appblocker.notify
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.appblocker.R
-import com.appblocker.engine.EngineAction
-import java.text.DateFormat
-import java.util.Date
 
 /** Posts and cancels the "limit reached" notification, one per app. */
 class LimitNotifier(context: Context) {
     private val context = context.applicationContext
 
-    fun post(event: EngineAction.NotifyLimitReached) {
+    fun post(packageName: String, message: LimitMessage) {
         ensureChannel()
         val manager = NotificationManagerCompat.from(context)
         if (!manager.areNotificationsEnabled()) {
@@ -26,20 +21,23 @@ class LimitNotifier(context: Context) {
             return
         }
 
-        val message = LimitMessageFormatter.format(event, ::formatTime)
-        val notification =
+        val open = BreakIntents.pending(context)
+        val builder =
             NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(com.appblocker.R.drawable.ic_notification)
                 .setContentTitle(message.title)
                 .setContentText(message.text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(message.bigText))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setOnlyAlertOnce(true)
                 .setAutoCancel(true)
-                .setContentIntent(openAppIntent())
-                .build()
+                .setContentIntent(open)
+        // Where the OS allows it (Android 14+ needs a user grant), also take over the screen.
+        if (canUseFullScreenIntent()) builder.setFullScreenIntent(open, true)
+
         try {
-            manager.notify(idFor(event.packageName), notification)
+            manager.notify(idFor(packageName), builder.build())
             Log.i(TAG, "limit notification posted")
         } catch (e: SecurityException) {
             Log.w(TAG, "Could not post the limit notification", e)
@@ -50,15 +48,9 @@ class LimitNotifier(context: Context) {
         NotificationManagerCompat.from(context).cancel(idFor(packageName))
     }
 
-    private fun openAppIntent(): PendingIntent? {
-        val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return null
-        return PendingIntent.getActivity(
-            context,
-            0,
-            launch,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
+    private fun canUseFullScreenIntent(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE ||
+            context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
 
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -68,9 +60,6 @@ class LimitNotifier(context: Context) {
             }
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
-
-    private fun formatTime(millis: Long): String =
-        DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(millis))
 
     /** One notification per app, so a second app's block never replaces or cancels the first. */
     private fun idFor(packageName: String): Int = BASE_ID + (packageName.hashCode() and 0xFFFF)

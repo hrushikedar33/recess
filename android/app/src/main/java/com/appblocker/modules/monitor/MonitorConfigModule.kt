@@ -77,6 +77,16 @@ class MonitorConfigModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    /** The last limit event as JSON (or null), for the Break screen. */
+    @ReactMethod
+    fun getLimitEvent(promise: Promise) {
+        try {
+            promise.resolve(prefs.lastLimitEventJson())
+        } catch (e: Exception) {
+            promise.reject(ERROR_MONITOR, e.message, e)
+        }
+    }
+
     @ReactMethod
     fun syncBlockedApps(json: String, promise: Promise) {
         try {
