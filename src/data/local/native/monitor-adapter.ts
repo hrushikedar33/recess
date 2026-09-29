@@ -1,6 +1,7 @@
 import { NativeModules } from 'react-native';
 import { AppError } from '../../../core/errors/app-error';
 import { BlockedApp } from '../../../core/types/domain.types';
+import { RemoteQuote } from '../../../domain/quotes/quote-validation';
 import {
   BlockedAppSyncPayload,
   GoalSyncPayload,
@@ -117,5 +118,12 @@ export const MonitorAdapter = {
   syncGoals: (goals: GoalSyncPayload[]): Promise<void> =>
     call((module) =>
       module.syncGoals(JSON.stringify(goals.map(toGoalPayload))),
+    ),
+
+  syncExtraQuotes: (quotes: RemoteQuote[]): Promise<void> =>
+    call((module) =>
+      module.syncExtraQuotes(
+        JSON.stringify(quotes.map(({ text, author }) => ({ text, author }))),
+      ),
     ),
 };

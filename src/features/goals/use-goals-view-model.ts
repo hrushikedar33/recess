@@ -19,6 +19,8 @@ export function useGoalsViewModel() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [onlineQuotes, setOnlineQuotes] = useState(false);
+  const [onlineQuotesLoaded, setOnlineQuotesLoaded] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -31,6 +33,19 @@ export function useGoalsViewModel() {
           }
         })
         .catch((failure: unknown) => setError(messageFor(failure)));
+      useCases.onlineQuotes
+        .isEnabled()
+        .then((enabled) => {
+          if (active) {
+            setOnlineQuotes(enabled);
+          }
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (active) {
+            setOnlineQuotesLoaded(true);
+          }
+        });
       return () => {
         active = false;
       };
@@ -68,6 +83,22 @@ export function useGoalsViewModel() {
     }
   }, []);
 
+  /** Off by default. Turning it on fetches straight away; a failed fetch is only logged. */
+  const handleToggleOnlineQuotes = useCallback(async (enabled: boolean) => {
+    try {
+      await useCases.onlineQuotes.setEnabled(enabled);
+      setOnlineQuotes(enabled);
+    } catch (failure) {
+      setError(messageFor(failure));
+      return;
+    }
+    if (enabled) {
+      useCases.onlineQuotes.refreshIfDue().catch((failure: unknown) => {
+        logger.warn('[Goals] Could not fetch online quotes', failure);
+      });
+    }
+  }, []);
+
   const summary = useMemo(() => summarizeGoals(goals), [goals]);
 
   return {
@@ -76,6 +107,9 @@ export function useGoalsViewModel() {
     error,
     summary,
     canAdd: draft.trim().length > 0,
+    onlineQuotes,
+    onlineQuotesLoaded,
+    handleToggleOnlineQuotes,
     handleChangeDraft,
     handleAdd,
     handleToggle,

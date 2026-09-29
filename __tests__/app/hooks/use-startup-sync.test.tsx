@@ -47,6 +47,9 @@ describe('useStartupSync', () => {
     const syncGoals = jest
       .spyOn(useCases.syncGoals, 'execute')
       .mockResolvedValue(undefined);
+    const refreshQuotes = jest
+      .spyOn(useCases.onlineQuotes, 'refreshIfDue')
+      .mockResolvedValue('disabled');
 
     const { rerender } = renderHook(() => useStartupSync());
     rerender({});
@@ -54,8 +57,10 @@ describe('useStartupSync', () => {
 
     expect(syncApps).toHaveBeenCalledTimes(1);
     expect(syncGoals).toHaveBeenCalledTimes(1);
+    expect(refreshQuotes).toHaveBeenCalledTimes(1);
     syncApps.mockRestore();
     syncGoals.mockRestore();
+    refreshQuotes.mockRestore();
   });
 
   it('also pushes the stored goals to native once when the app starts', async () => {
@@ -76,6 +81,29 @@ describe('useStartupSync', () => {
     expect(sent).toEqual([
       { id: 'g1', title: 'Finish the report', done: false },
     ]);
+  });
+
+  it('asks for a quotes refresh once when the app starts', async () => {
+    const refresh = jest
+      .spyOn(useCases.onlineQuotes, 'refreshIfDue')
+      .mockResolvedValue('disabled');
+
+    renderHook(() => useStartupSync());
+
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+    refresh.mockRestore();
+  });
+
+  it('never lets a failed quotes refresh crash the app', async () => {
+    const refresh = jest
+      .spyOn(useCases.onlineQuotes, 'refreshIfDue')
+      .mockRejectedValue(new Error('offline'));
+
+    const { result } = renderHook(() => useStartupSync());
+
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(result.current).toBeUndefined();
+    refresh.mockRestore();
   });
 
   it('does not crash the app when native is unavailable', async () => {

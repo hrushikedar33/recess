@@ -27,4 +27,14 @@ object QuoteCodec {
             Quote(text, author, (entry.opt("source") as? String)?.trim()?.takeIf { it.isNotEmpty() })
         }
     }
+
+    fun encode(quotes: List<Quote>): String =
+        org.json.JSONArray(
+            quotes.map { quote ->
+                org.json.JSONObject()
+                    .put("text", quote.text)
+                    .put("author", quote.author)
+                    .apply { quote.source?.let { put("source", it) } }
+            },
+        ).toString()
 }

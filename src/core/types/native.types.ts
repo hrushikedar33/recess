@@ -60,4 +60,6 @@ export interface MonitorConfigNativeModule {
   syncBlockedApps(json: string): Promise<void>;
   /** JSON list of {@link GoalSyncPayload}; rejects with code INVALID_CONFIG if malformed. */
   syncGoals(json: string): Promise<void>;
+  /** JSON list of {text, author} fetched online; replaces the previous set. Rejects if malformed. */
+  syncExtraQuotes(json: string): Promise<void>;
 }

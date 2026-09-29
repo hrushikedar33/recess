@@ -165,3 +165,102 @@ describe('useGoalsViewModel', () => {
     warn.mockRestore();
   });
 });
+
+describe('useGoalsViewModel: online quotes switch', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('is off until the user turns it on', async () => {
+    const { result } = renderHook(() => useGoalsViewModel());
+
+    await waitFor(() => expect(result.current.onlineQuotesLoaded).toBe(true));
+    expect(result.current.onlineQuotes).toBe(false);
+  });
+
+  it('shows the setting the user chose before', async () => {
+    await AsyncStorage.setItem('@AppBlocker:onlineQuotes', 'true');
+
+    const { result } = renderHook(() => useGoalsViewModel());
+
+    await waitFor(() => expect(result.current.onlineQuotes).toBe(true));
+  });
+
+  it('turning it on saves the choice and fetches quotes straight away', async () => {
+    const refresh = jest
+      .spyOn(useCases.onlineQuotes, 'refreshIfDue')
+      .mockResolvedValue('refreshed');
+    const { result } = renderHook(() => useGoalsViewModel());
+    await waitFor(() => expect(result.current.onlineQuotesLoaded).toBe(true));
+
+    await act(async () => {
+      await result.current.handleToggleOnlineQuotes(true);
+    });
+
+    expect(result.current.onlineQuotes).toBe(true);
+    expect(await AsyncStorage.getItem('@AppBlocker:onlineQuotes')).toBe('true');
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('turning it off forgets the online quotes and does not fetch', async () => {
+    await AsyncStorage.setItem('@AppBlocker:onlineQuotes', 'true');
+    const refresh = jest
+      .spyOn(useCases.onlineQuotes, 'refreshIfDue')
+      .mockResolvedValue('disabled');
+    const { result } = renderHook(() => useGoalsViewModel());
+    await waitFor(() => expect(result.current.onlineQuotes).toBe(true));
+
+    await act(async () => {
+      await result.current.handleToggleOnlineQuotes(false);
+    });
+
+    expect(result.current.onlineQuotes).toBe(false);
+    expect(await AsyncStorage.getItem('@AppBlocker:onlineQuotes')).toBe(
+      'false',
+    );
+    expect(refresh).not.toHaveBeenCalled();
+    expect(
+      NativeModules.MonitorConfigModule.syncExtraQuotes,
+    ).toHaveBeenCalledWith('[]');
+  });
+
+  it('stays on, and does not crash, when the first fetch fails', async () => {
+    jest
+      .spyOn(useCases.onlineQuotes, 'refreshIfDue')
+      .mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(() => useGoalsViewModel());
+    await waitFor(() => expect(result.current.onlineQuotesLoaded).toBe(true));
+
+    await act(async () => {
+      await result.current.handleToggleOnlineQuotes(true);
+    });
+
+    expect(result.current.onlineQuotes).toBe(true);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('shows a message and keeps the old setting when saving the choice fails', async () => {
+    jest
+      .spyOn(useCases.onlineQuotes, 'setEnabled')
+      .mockRejectedValue(new Error('disk full'));
+    const refresh = jest
+      .spyOn(useCases.onlineQuotes, 'refreshIfDue')
+      .mockResolvedValue('disabled');
+    const { result } = renderHook(() => useGoalsViewModel());
+    await waitFor(() => expect(result.current.onlineQuotesLoaded).toBe(true));
+
+    await act(async () => {
+      await result.current.handleToggleOnlineQuotes(true);
+    });
+
+    expect(result.current.onlineQuotes).toBe(false);
+    expect(result.current.error).toBe(ErrorMessages.generic);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});

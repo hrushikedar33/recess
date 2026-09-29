@@ -21,7 +21,7 @@ class LimitAlertsTest {
     private val store = InMemoryKeyValueStore()
     private val prefs = RecessPrefs(store) { T0 }
     private val quotes = listOf(Quote("First quote.", "Author One"), Quote("Second quote.", "Author Two"))
-    private val alerts = LimitAlerts(QuoteRepository(quotes, store, Random(3L)), prefs, { T0 }) { "at $it" }
+    private val alerts = LimitAlerts({ QuoteRepository(quotes, store, Random(3L)) }, prefs, { T0 }) { "at $it" }
 
     private fun snapshot() = LimitEventSnapshotCodec.decode(prefs.lastLimitEventJson())
 

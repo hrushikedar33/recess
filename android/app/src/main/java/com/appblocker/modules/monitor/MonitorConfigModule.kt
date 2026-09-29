@@ -111,4 +111,18 @@ class MonitorConfigModule(reactContext: ReactApplicationContext) :
             promise.reject(ERROR_MONITOR, e.message, e)
         }
     }
+
+    /** Quotes fetched online (an opt-in feature); mixed into the bundled ones by the monitor. */
+    @ReactMethod
+    fun syncExtraQuotes(json: String?, promise: Promise) {
+        try {
+            prefs.saveExtraQuotes(json)
+            Log.i(TAG, "Synced ${prefs.extraQuotes().size} extra quote(s)")
+            promise.resolve(null)
+        } catch (e: ConfigFormatException) {
+            promise.reject(ERROR_INVALID_CONFIG, e.message, e)
+        } catch (e: Exception) {
+            promise.reject(ERROR_MONITOR, e.message, e)
+        }
+    }
 }

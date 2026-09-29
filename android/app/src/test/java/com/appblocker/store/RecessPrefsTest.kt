@@ -369,4 +369,46 @@ class RecessPrefsTest {
     fun `there is no stop time before any stop`() {
         assertNull(prefs.lastStopReasonAt())
     }
+
+    // ---- quotes fetched online -----------------------------------------------------------------
+
+    @Test
+    fun `there are no extra quotes until some are saved`() {
+        assertTrue(prefs.extraQuotes().isEmpty())
+    }
+
+    @Test
+    fun `saved extra quotes survive a restart`() {
+        prefs.saveExtraQuotes("""[{"text":"A fine quote from the internet.","author":"Someone"}]""")
+
+        assertEquals("A fine quote from the internet.", restarted().extraQuotes().single().text)
+    }
+
+    @Test
+    fun `saving replaces the earlier extras, and an empty list clears them`() {
+        prefs.saveExtraQuotes("""[{"text":"First extra quote is here.","author":"A"}]""")
+        prefs.saveExtraQuotes("""[{"text":"Second extra quote is here.","author":"B"}]""")
+        assertEquals(listOf("Second extra quote is here."), prefs.extraQuotes().map { it.text })
+
+        prefs.saveExtraQuotes("[]")
+
+        assertTrue(prefs.extraQuotes().isEmpty())
+    }
+
+    @Test
+    fun `a malformed extras payload is rejected and the earlier extras stay`() {
+        prefs.saveExtraQuotes("""[{"text":"Kept extra quote stays.","author":"A"}]""")
+
+        assertThrows(ConfigFormatException::class.java) { prefs.saveExtraQuotes("{not a list") }
+        assertThrows(ConfigFormatException::class.java) { prefs.saveExtraQuotes(null) }
+
+        assertEquals(listOf("Kept extra quote stays."), prefs.extraQuotes().map { it.text })
+    }
+
+    @Test
+    fun `corrupt stored extras read as none instead of crashing`() {
+        store.putString("extraQuotesJson", "{corrupt")
+
+        assertTrue(prefs.extraQuotes().isEmpty())
+    }
 }

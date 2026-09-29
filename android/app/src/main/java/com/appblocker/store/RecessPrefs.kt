@@ -2,6 +2,8 @@ package com.appblocker.store
 
 import com.appblocker.engine.EngineState
 import com.appblocker.engine.EngineStateCodec
+import com.appblocker.quotes.Quote
+import com.appblocker.quotes.QuoteCodec
 
 data class MonitorStatus(
     val enabled: Boolean,
@@ -66,6 +68,24 @@ class RecessPrefs(
     }
 
     fun lastLimitEventJson(): String? = store.getString(KEY_LIMIT_EVENT)
+
+    /**
+     * Quotes fetched online (an opt-in feature), replacing the previous set. The payload must be a
+     * JSON list; entries that are not quotes are skipped. They are checked again where they are used.
+     */
+    fun saveExtraQuotes(json: String?) {
+        val payload = json ?: throw ConfigFormatException("quotes: payload is missing")
+        val entries =
+            try {
+                org.json.JSONArray(payload).length()
+            } catch (e: org.json.JSONException) {
+                throw ConfigFormatException("quotes: not a JSON list")
+            }
+        if (entries > MAX_EXTRA_QUOTE_ENTRIES) throw ConfigFormatException("quotes: more than $MAX_EXTRA_QUOTE_ENTRIES entries")
+        store.putString(KEY_EXTRA_QUOTES, QuoteCodec.encode(QuoteCodec.parse(payload)))
+    }
+
+    fun extraQuotes(): List<Quote> = QuoteCodec.parse(store.getString(KEY_EXTRA_QUOTES))
 
     fun engineState(): EngineState = EngineStateCodec.decode(store.getString(KEY_ENGINE_STATE))
 
@@ -146,6 +166,8 @@ class RecessPrefs(
         private const val KEY_INTENT_UPDATED_AT = "intentUpdatedAt"
         private const val KEY_HEALTH = "healthIssues"
         private const val KEY_LIMIT_EVENT = "lastLimitEventJson"
+        private const val KEY_EXTRA_QUOTES = "extraQuotesJson"
+        private const val MAX_EXTRA_QUOTE_ENTRIES = 500
         private const val KEY_STOP_REASON = "lastStopReason"
         private const val KEY_STOP_REASON_AT = "lastStopReasonAt"
     }

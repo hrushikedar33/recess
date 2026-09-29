@@ -9,13 +9,14 @@ import com.appblocker.store.RecessPrefs
  * Break screen show the very same quote.
  */
 class LimitAlerts(
-    private val quotes: QuoteRepository,
+    /** Built per event, so quotes fetched online after the service started are used straight away. */
+    private val quotes: () -> QuoteRepository,
     private val prefs: RecessPrefs,
     private val clock: () -> Long,
     private val formatTime: (Long) -> String,
 ) {
     fun compose(event: EngineAction.NotifyLimitReached): LimitMessage {
-        val quote = quotes.next()
+        val quote = quotes().next()
         val message = LimitMessageFormatter.format(event, quote, prefs.goals(), formatTime)
         prefs.saveLimitEvent(
             LimitEventSnapshotCodec.encode(

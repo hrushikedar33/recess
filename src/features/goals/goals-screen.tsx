@@ -1,7 +1,9 @@
 import React from 'react';
 import {
   FlatList,
+  Linking,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -20,6 +22,8 @@ export default function GoalsScreen() {
     error,
     summary,
     canAdd,
+    onlineQuotes,
+    handleToggleOnlineQuotes,
     handleChangeDraft,
     handleAdd,
     handleToggle,
@@ -115,6 +119,37 @@ export default function GoalsScreen() {
           keyboardShouldPersistTaps="handled"
         />
       )}
+      <View style={styles.quotesCard}>
+        <View style={styles.quotesRow}>
+          <View style={styles.quotesText}>
+            <Text style={styles.quotesTitle}>
+              Fresh quotes from the internet
+            </Text>
+            <Text style={styles.quotesBody}>
+              Once a day Recess can fetch new quotes. Off by default. Only the
+              request goes out; your goals never leave this phone.
+            </Text>
+          </View>
+          <Switch
+            value={onlineQuotes}
+            onValueChange={handleToggleOnlineQuotes}
+            accessibilityLabel="Fresh quotes from the internet"
+            trackColor={{ false: Colors.border, true: Colors.accentBorder }}
+            thumbColor={onlineQuotes ? Colors.accent : Colors.textDisabled}
+          />
+        </View>
+        {onlineQuotes && (
+          <TouchableOpacity
+            onPress={() => Linking.openURL('https://zenquotes.io/')}
+            accessibilityRole="link"
+            accessibilityLabel="Inspirational quotes provided by ZenQuotes API"
+          >
+            <Text style={styles.attribution}>
+              Inspirational quotes provided by ZenQuotes API
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -210,6 +245,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   removeText: { color: Colors.textSecondary, fontSize: 16 },
+  quotesCard: {
+    marginHorizontal: 24,
+    marginBottom: 16,
+    backgroundColor: Colors.surface,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+  },
+  quotesRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  quotesText: { flex: 1, gap: 4 },
+  quotesTitle: { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
+  quotesBody: { color: Colors.textSecondary, fontSize: 12, lineHeight: 17 },
+  attribution: {
+    color: Colors.accent,
+    fontSize: 12,
+    minHeight: 32,
+    textDecorationLine: 'underline',
+  },
   empty: {
     flex: 1,
     alignItems: 'center',

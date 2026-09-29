@@ -34,5 +34,6 @@ Object.assign(NativeModules, {
     getLimitEvent: jest.fn(async () => null),
     syncBlockedApps: jest.fn(async () => undefined),
     syncGoals: jest.fn(async () => undefined),
+    syncExtraQuotes: jest.fn(async () => undefined),
   },
 });

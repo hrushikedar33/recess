@@ -19,6 +19,7 @@ import com.appblocker.engine.EnforcementEngine
 import com.appblocker.notify.LimitAlerts
 import com.appblocker.notify.LimitNotifier
 import com.appblocker.quotes.QuoteAssets
+import com.appblocker.quotes.QuotePool
 import com.appblocker.quotes.QuoteRepository
 import com.appblocker.store.RecessPrefs
 import com.appblocker.store.RecessPrefsFactory
@@ -166,7 +167,10 @@ class MonitorService : Service() {
     }
 
     private fun buildLimitAlerts(): LimitAlerts {
-        val quotes = QuoteRepository(QuoteAssets.load(this), RecessPrefsFactory.store(this))
+        val store = RecessPrefsFactory.store(this)
+        val quotes = {
+            QuoteRepository(QuotePool.merge(QuoteAssets.load(this), prefs.extraQuotes()), store)
+        }
         // Built on every call so a changed locale or timezone is honoured for the whole life of the service.
         return LimitAlerts(quotes, prefs, System::currentTimeMillis) {
             DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it))
