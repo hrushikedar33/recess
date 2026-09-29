@@ -1,7 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { NativeModules } from 'react-native';
-import { BLOCKED_APPS_STORAGE_KEY } from '@core/constants/storage.keys';
+import {
+  BLOCKED_APPS_STORAGE_KEY,
+  GOALS_STORAGE_KEY,
+} from '@core/constants/storage.keys';
 import { useCases } from '@app/di';
 import { useStartupSync } from '@app/hooks/use-startup-sync';
 
@@ -38,16 +41,41 @@ describe('useStartupSync', () => {
   });
 
   it('does not sync again when the component re-renders', () => {
-    const execute = jest
+    const syncApps = jest
       .spyOn(useCases.syncBlockedApps, 'execute')
+      .mockResolvedValue(undefined);
+    const syncGoals = jest
+      .spyOn(useCases.syncGoals, 'execute')
       .mockResolvedValue(undefined);
 
     const { rerender } = renderHook(() => useStartupSync());
     rerender({});
     rerender({});
 
-    expect(execute).toHaveBeenCalledTimes(1);
-    execute.mockRestore();
+    expect(syncApps).toHaveBeenCalledTimes(1);
+    expect(syncGoals).toHaveBeenCalledTimes(1);
+    syncApps.mockRestore();
+    syncGoals.mockRestore();
+  });
+
+  it('also pushes the stored goals to native once when the app starts', async () => {
+    await AsyncStorage.setItem(
+      GOALS_STORAGE_KEY,
+      JSON.stringify([
+        { id: 'g1', title: 'Finish the report', done: false, createdAt: 1 },
+      ]),
+    );
+
+    renderHook(() => useStartupSync());
+
+    await waitFor(() => expect(native.syncGoals).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(native.syncBlockedApps).toHaveBeenCalledTimes(1),
+    );
+    const sent = JSON.parse(native.syncGoals.mock.calls[0][0] as string);
+    expect(sent).toEqual([
+      { id: 'g1', title: 'Finish the report', done: false },
+    ]);
   });
 
   it('does not crash the app when native is unavailable', async () => {
@@ -59,6 +87,7 @@ describe('useStartupSync', () => {
     const { result } = renderHook(() => useStartupSync());
 
     await waitFor(() => expect(warn).toHaveBeenCalled());
+    await waitFor(() => expect(native.syncGoals).toHaveBeenCalled());
     expect(result.current).toBeUndefined();
     warn.mockRestore();
   });

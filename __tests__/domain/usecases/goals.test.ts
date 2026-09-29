@@ -21,6 +21,10 @@ class InMemoryGoalsRepository implements IGoalsRepository {
     this.saves += 1;
     this.goals = goals;
   }
+
+  syncToNative(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 const goal = (id: string, title = `Goal ${id}`, done = false): Goal => ({
