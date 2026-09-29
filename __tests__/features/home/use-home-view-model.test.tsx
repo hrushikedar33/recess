@@ -39,6 +39,14 @@ const grantEverything = () => {
   usage.isBatteryOptimizationIgnored.mockResolvedValue(true);
 };
 
+const pressAlertButton = (alert: jest.SpyInstance, text: string) => {
+  const buttons = alert.mock.calls[alert.mock.calls.length - 1][2] as {
+    text: string;
+    onPress?: () => void;
+  }[];
+  buttons.find((button) => button.text === text)?.onPress?.();
+};
+
 const renderHome = async () => {
   const hook = renderHook(() => useHomeViewModel());
   await waitFor(() => expect(monitor.getMonitorStatus).toHaveBeenCalled());
@@ -201,6 +209,45 @@ describe('useHomeViewModel: the monitoring toggle', () => {
       expect.any(Array),
     );
     expect(monitor.setMonitoringEnabled).not.toHaveBeenCalledWith(true);
+  });
+
+  it('the Grant Permission button in the prompt opens the matching settings page', async () => {
+    usage.hasPermission.mockResolvedValue(false);
+    const { result } = await renderHome();
+    await waitFor(() => expect(usage.hasPermission).toHaveBeenCalled());
+    await act(async () => {
+      await result.current.handleToggleTracker();
+    });
+
+    pressAlertButton(alert, 'Grant Permission');
+
+    expect(usage.requestPermission).toHaveBeenCalledTimes(1);
+    expect(usage.requestOverlayPermission).not.toHaveBeenCalled();
+  });
+
+  it('asks about battery optimisation last, and Skip still turns monitoring on', async () => {
+    usage.isBatteryOptimizationIgnored.mockResolvedValue(false);
+    const { result } = await renderHome();
+    await waitFor(() =>
+      expect(usage.isBatteryOptimizationIgnored).toHaveBeenCalled(),
+    );
+    await act(async () => {
+      await result.current.handleToggleTracker();
+    });
+    expect(alert).toHaveBeenCalledWith(
+      'Battery Optimization Active',
+      expect.any(String),
+      expect.any(Array),
+    );
+    expect(monitor.setMonitoringEnabled).not.toHaveBeenCalledWith(true);
+
+    await act(async () => {
+      pressAlertButton(alert, 'Skip');
+    });
+
+    await waitFor(() =>
+      expect(monitor.setMonitoringEnabled).toHaveBeenCalledWith(true),
+    );
   });
 
   it('shows an error and stays OFF when the service cannot be started', async () => {
@@ -563,5 +610,89 @@ describe('useHomeViewModel: keeping the health card true over time', () => {
     });
 
     expect(result.current.trackerEnabled).toBe(true);
+  });
+});
+
+describe('useHomeViewModel: the permission banner', () => {
+  beforeEach(async () => {
+    monitor.getMonitorStatus.mockReset().mockResolvedValue(status());
+    await AsyncStorage.clear();
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
+    jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    grantEverything();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const renderAfterPermissionsRead = async () => {
+    const hook = await renderHome();
+    await waitFor(() =>
+      expect(usage.isBatteryOptimizationIgnored).toHaveBeenCalled(),
+    );
+    return hook;
+  };
+
+  it('is hidden when everything is granted', async () => {
+    const { result } = await renderAfterPermissionsRead();
+
+    expect(result.current.shouldShowPermissionBanner).toBe(false);
+  });
+
+  it('asks for Usage Access first, and the button requests it', async () => {
+    usage.hasPermission.mockResolvedValue(false);
+    usage.hasOverlayPermission.mockResolvedValue(false);
+    const { result } = await renderAfterPermissionsRead();
+    await waitFor(() =>
+      expect(result.current.permissionBannerText).toContain('Usage Access'),
+    );
+    expect(result.current.shouldShowPermissionBanner).toBe(true);
+
+    act(() => result.current.handleRequestPermission());
+
+    expect(usage.requestPermission).toHaveBeenCalledTimes(1);
+    expect(usage.requestOverlayPermission).not.toHaveBeenCalled();
+  });
+
+  it('asks for the overlay next, and the button requests it', async () => {
+    usage.hasOverlayPermission.mockResolvedValue(false);
+    usage.isBatteryOptimizationIgnored.mockResolvedValue(false);
+    const { result } = await renderAfterPermissionsRead();
+    await waitFor(() =>
+      expect(result.current.permissionBannerText).toContain(
+        'Display over other apps',
+      ),
+    );
+
+    act(() => result.current.handleRequestPermission());
+
+    expect(usage.requestOverlayPermission).toHaveBeenCalledTimes(1);
+    expect(usage.requestIgnoreBatteryOptimization).not.toHaveBeenCalled();
+  });
+
+  it('asks about battery optimisation last, and the button requests it', async () => {
+    usage.isBatteryOptimizationIgnored.mockResolvedValue(false);
+    const { result } = await renderAfterPermissionsRead();
+    await waitFor(() =>
+      expect(result.current.permissionBannerText).toContain(
+        'battery optimization',
+      ),
+    );
+    expect(result.current.shouldShowPermissionBanner).toBe(true);
+
+    act(() => result.current.handleRequestPermission());
+
+    expect(usage.requestIgnoreBatteryOptimization).toHaveBeenCalledTimes(1);
+  });
+
+  it('is never shown off Android', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    usage.hasPermission.mockResolvedValue(false);
+    const { result } = await renderHome();
+    await act(async () => undefined);
+
+    expect(result.current.shouldShowPermissionBanner).toBe(false);
   });
 });

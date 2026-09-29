@@ -11,13 +11,41 @@ import { useAppState } from '../../core/hooks/use-app-state';
 import { logger } from '../../core/utils/logger';
 import UsageTracker from '../../services/tracker/usage-tracker-service';
 import { AppListAdapter } from '../../data/local/native/app-list-adapter';
-import { NoticeState } from '../../data/repositories/notices-repository';
+import { NoticeState } from '../../data/repositories/i-notices-repository';
 import { summarizeGoals } from '../goals/goals-summary';
 import { describeMonitorHealth } from './monitor-health';
 import { oemGuidance } from './oem-guidance';
+import {
+  PERMISSION_BANNER_TEXT,
+  PermissionState,
+  PermissionStep,
+  nextMissingPermission,
+} from './permission-steps';
 import { describeStopReason } from './stop-reason';
 
 type NavProp = StackNavigationProp<RootStackParamList>;
+
+const PERMISSION_REQUEST: Record<PermissionStep, () => void> = {
+  usage: () => UsageTracker.requestPermission(),
+  overlay: () => UsageTracker.requestOverlayPermission(),
+  battery: () => UsageTracker.requestIgnoreBatteryOptimization(),
+};
+
+// The two permissions without which monitoring cannot work; battery optimisation is only advice.
+const REQUIRED_PERMISSION_PROMPT: Record<
+  'usage' | 'overlay',
+  { message: string; request: () => void }
+> = {
+  usage: {
+    message: 'Recess needs Usage Access permission to monitor apps.',
+    request: PERMISSION_REQUEST.usage,
+  },
+  overlay: {
+    message:
+      'Recess needs "Display over other apps" permission to close blocked apps and show the timer.',
+    request: PERMISSION_REQUEST.overlay,
+  },
+};
 
 export function useHomeViewModel() {
   const navigation = useNavigation<NavProp>();
@@ -32,10 +60,12 @@ export function useHomeViewModel() {
   });
   const [now, setNow] = useState(() => Date.now());
   const appState = useAppState();
-  const [hasUsagePermission, setHasUsagePermission] = useState(false);
-  const [hasOverlayPermission, setHasOverlayPermission] = useState(false);
-  const [hasBatteryOptimizationIgnored, setHasBatteryOptimizationIgnored] =
-    useState(true);
+  // Battery starts as granted so the banner does not flash before the first read.
+  const [permissions, setPermissions] = useState<PermissionState>({
+    usage: false,
+    overlay: false,
+    battery: true,
+  });
   const [trackerBusy, setTrackerBusy] = useState(false);
 
   const loadApps = useCallback(async () => {
@@ -82,12 +112,11 @@ export function useHomeViewModel() {
   }, []);
 
   const checkPermissions = useCallback(async () => {
-    const usageGranted = await UsageTracker.checkPermission();
-    const overlayGranted = await UsageTracker.checkOverlayPermission();
-    const batteryIgnored = await UsageTracker.checkBatteryOptimization();
-    setHasUsagePermission(usageGranted);
-    setHasOverlayPermission(overlayGranted);
-    setHasBatteryOptimizationIgnored(batteryIgnored);
+    setPermissions({
+      usage: await UsageTracker.checkPermission(),
+      overlay: await UsageTracker.checkOverlayPermission(),
+      battery: await UsageTracker.checkBatteryOptimization(),
+    });
   }, []);
 
   useFocusEffect(
@@ -198,41 +227,22 @@ export function useHomeViewModel() {
       return;
     }
 
-    if (!hasUsagePermission) {
-      Alert.alert(
-        'Permission Required',
-        'Recess needs Usage Access permission to monitor apps.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Grant Permission',
-            onPress: () => {
-              UsageTracker.requestPermission();
-            },
+    const missing = nextMissingPermission(permissions);
+    if (missing === 'usage' || missing === 'overlay') {
+      const { message, request } = REQUIRED_PERMISSION_PROMPT[missing];
+      Alert.alert('Permission Required', message, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Grant Permission',
+          onPress: () => {
+            request();
           },
-        ],
-      );
+        },
+      ]);
       return;
     }
 
-    if (!hasOverlayPermission) {
-      Alert.alert(
-        'Permission Required',
-        'Recess needs "Display over other apps" permission to close blocked apps and show the timer.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Grant Permission',
-            onPress: () => {
-              UsageTracker.requestOverlayPermission();
-            },
-          },
-        ],
-      );
-      return;
-    }
-
-    if (!hasBatteryOptimizationIgnored) {
+    if (missing === 'battery') {
       Alert.alert(
         'Battery Optimization Active',
         'Android or your phone manufacturer may close Recess in the background. Disable battery optimization to ensure Recess stays running.',
@@ -253,9 +263,7 @@ export function useHomeViewModel() {
   }, [
     trackerBusy,
     trackerEnabled,
-    hasUsagePermission,
-    hasOverlayPermission,
-    hasBatteryOptimizationIgnored,
+    permissions,
     enableTracker,
     refreshMonitorStatus,
   ]);
@@ -290,22 +298,14 @@ export function useHomeViewModel() {
   }, []);
 
   const handleRequestPermission = useCallback(() => {
-    if (!hasUsagePermission) {
-      UsageTracker.requestPermission();
-    } else if (!hasOverlayPermission) {
-      UsageTracker.requestOverlayPermission();
-    } else if (!hasBatteryOptimizationIgnored) {
-      UsageTracker.requestIgnoreBatteryOptimization();
+    const missing = nextMissingPermission(permissions);
+    if (missing) {
+      PERMISSION_REQUEST[missing]();
     }
     setTimeout(() => {
       checkPermissions();
     }, 2000);
-  }, [
-    hasUsagePermission,
-    hasOverlayPermission,
-    hasBatteryOptimizationIgnored,
-    checkPermissions,
-  ]);
+  }, [permissions, checkPermissions]);
 
   const handleAddApp = useCallback(() => {
     navigation.navigate(Routes.AddApp);
@@ -315,17 +315,12 @@ export function useHomeViewModel() {
     navigation.navigate(Routes.Goals);
   }, [navigation]);
 
-  const permissionBannerText = !hasUsagePermission
-    ? '⚠️ Grant Usage Access permission to enable tracking'
-    : !hasOverlayPermission
-    ? '⚠️ Grant "Display over other apps" permission to enable blocking'
-    : '🔋 Disable battery optimization to keep Recess active';
-
+  const missingPermission = nextMissingPermission(permissions);
   const shouldShowPermissionBanner =
-    Platform.OS === 'android' &&
-    (!hasUsagePermission ||
-      !hasOverlayPermission ||
-      !hasBatteryOptimizationIgnored);
+    Platform.OS === 'android' && missingPermission !== null;
+  const permissionBannerText = missingPermission
+    ? PERMISSION_BANNER_TEXT[missingPermission]
+    : '';
 
   return {
     blockedApps,
@@ -339,10 +334,6 @@ export function useHomeViewModel() {
     handleDismissOemGuidance,
     handleOpenAppSettings,
     trackerBusy,
-    hasPermission:
-      hasUsagePermission &&
-      hasOverlayPermission &&
-      hasBatteryOptimizationIgnored,
     shouldShowPermissionBanner,
     permissionBannerText,
     handleToggleTracker,
