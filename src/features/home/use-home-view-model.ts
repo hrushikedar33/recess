@@ -1,16 +1,14 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useCases } from '../../app/di';
 import { Routes } from '../../app/navigation/routes';
 import { RootStackParamList } from '../../app/navigation/types';
-import {
-  BlockedApp,
-  Goal,
-  LimitReachedPayload,
-} from '../../core/types/domain.types';
-import { useDeviceEventListener } from '../../core/hooks/use-device-event-listener';
+import { BlockedApp, Goal } from '../../core/types/domain.types';
+import { MonitorStatus } from '../../core/types/native.types';
+import { useAppState } from '../../core/hooks/use-app-state';
+import { logger } from '../../core/utils/logger';
 import UsageTracker from '../../services/tracker/usage-tracker-service';
 import { AppListAdapter } from '../../data/local/native/app-list-adapter';
 import { summarizeGoals } from '../goals/goals-summary';
@@ -21,7 +19,10 @@ export function useHomeViewModel() {
   const navigation = useNavigation<NavProp>();
   const [blockedApps, setBlockedApps] = useState<BlockedApp[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [trackerRunning, setTrackerRunning] = useState(false);
+  const [monitorStatus, setMonitorStatus] = useState<MonitorStatus | null>(
+    null,
+  );
+  const appState = useAppState();
   const [hasUsagePermission, setHasUsagePermission] = useState(false);
   const [hasOverlayPermission, setHasOverlayPermission] = useState(false);
   const [hasBatteryOptimizationIgnored, setHasBatteryOptimizationIgnored] =
@@ -46,7 +47,6 @@ export function useHomeViewModel() {
       }),
     );
     setBlockedApps(appsWithIcons);
-    setTrackerRunning(UsageTracker.isRunning());
   }, []);
 
   const loadGoals = useCallback(async () => {
@@ -54,6 +54,19 @@ export function useHomeViewModel() {
       setGoals(await useCases.getGoals.execute());
     } catch {
       // The summary card just stays as it was; goals are managed on their own screen.
+    }
+  }, []);
+
+  /**
+   * The toggle shows what the user asked for, read from native storage, never a JS-side guess. If
+   * they asked for monitoring but the service is not running it is started again here.
+   */
+  const refreshMonitorStatus = useCallback(async () => {
+    try {
+      const status = await UsageTracker.getStatus();
+      setMonitorStatus(await UsageTracker.resumeIfInterrupted(status));
+    } catch (error) {
+      logger.warn('[Home] Could not read the monitor status', error);
     }
   }, []);
 
@@ -74,94 +87,61 @@ export function useHomeViewModel() {
     }, [loadApps, loadGoals, checkPermissions]),
   );
 
-  useDeviceEventListener<LimitReachedPayload>(
-    'APP_LIMIT_REACHED',
-    useCallback(
-      (payload) => {
-        navigation.navigate(Routes.BlockOverlay, payload);
-      },
-      [navigation],
-    ),
-  );
+  // On open and every time the app comes back to the foreground (for example after the user
+  // returned from Settings, or the OS stopped the service in the background).
+  useEffect(() => {
+    if (appState !== 'background') {
+      refreshMonitorStatus();
+    }
+  }, [appState, refreshMonitorStatus]);
+
+  const trackerEnabled = monitorStatus?.enabled ?? false;
+
+  const enableTracker = useCallback(async () => {
+    setTrackerBusy(true);
+    try {
+      await UsageTracker.start();
+      await refreshMonitorStatus();
+    } catch (error) {
+      logger.warn('[Home] Could not start monitoring', error);
+      Alert.alert('Tracker Error', 'Could not start the background tracker.');
+    } finally {
+      setTrackerBusy(false);
+    }
+  }, [refreshMonitorStatus]);
 
   const handleToggleTracker = useCallback(async () => {
     if (trackerBusy) {
       return;
     }
 
-    setTrackerBusy(true);
+    if (trackerEnabled) {
+      setTrackerBusy(true);
+      try {
+        await UsageTracker.stop();
+        await refreshMonitorStatus();
+      } catch (error) {
+        logger.warn('[Home] Could not stop monitoring', error);
+        Alert.alert(
+          'Tracker Error',
+          'Could not update the background tracker.',
+        );
+      } finally {
+        setTrackerBusy(false);
+      }
+      return;
+    }
 
     if (!hasUsagePermission) {
-      try {
-        Alert.alert(
-          'Permission Required',
-          'Recess needs Usage Access permission to monitor apps.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Grant Permission',
-              onPress: () => {
-                UsageTracker.requestPermission();
-              },
-            },
-          ],
-        );
-      } finally {
-        setTrackerBusy(false);
-      }
-
-      return;
-    }
-
-    if (!hasOverlayPermission) {
-      try {
-        Alert.alert(
-          'Permission Required',
-          'Recess needs "Display over other apps" permission to close blocked apps and show the timer.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Grant Permission',
-              onPress: () => {
-                UsageTracker.requestOverlayPermission();
-              },
-            },
-          ],
-        );
-      } finally {
-        setTrackerBusy(false);
-      }
-
-      return;
-    }
-
-    if (!hasBatteryOptimizationIgnored && !UsageTracker.isRunning()) {
       Alert.alert(
-        'Battery Optimization Active',
-        'Android or your phone manufacturer may close Recess in the background. Disable battery optimization to ensure Recess stays running.',
+        'Permission Required',
+        'Recess needs Usage Access permission to monitor apps.',
         [
+          { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Skip',
-            style: 'cancel',
-            onPress: async () => {
-              try {
-                await UsageTracker.start();
-                setTrackerRunning(true);
-              } catch {
-                Alert.alert(
-                  'Tracker Error',
-                  'Could not start background tracker.',
-                );
-              } finally {
-                setTrackerBusy(false);
-              }
-            },
-          },
-          {
-            text: 'Disable',
+            text: 'Grant Permission',
             onPress: () => {
-              UsageTracker.requestIgnoreBatteryOptimization();
-              setTrackerBusy(false);
+              UsageTracker.requestPermission();
             },
           },
         ],
@@ -169,26 +149,49 @@ export function useHomeViewModel() {
       return;
     }
 
-    try {
-      const running = UsageTracker.isRunning();
-
-      if (running) {
-        await UsageTracker.stop();
-        setTrackerRunning(false);
-      } else {
-        await UsageTracker.start();
-        setTrackerRunning(true);
-      }
-    } catch (error) {
-      Alert.alert('Tracker Error', 'Could not update the background tracker.');
-    } finally {
-      setTrackerBusy(false);
+    if (!hasOverlayPermission) {
+      Alert.alert(
+        'Permission Required',
+        'Recess needs "Display over other apps" permission to close blocked apps and show the timer.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Grant Permission',
+            onPress: () => {
+              UsageTracker.requestOverlayPermission();
+            },
+          },
+        ],
+      );
+      return;
     }
+
+    if (!hasBatteryOptimizationIgnored) {
+      Alert.alert(
+        'Battery Optimization Active',
+        'Android or your phone manufacturer may close Recess in the background. Disable battery optimization to ensure Recess stays running.',
+        [
+          { text: 'Skip', style: 'cancel', onPress: () => enableTracker() },
+          {
+            text: 'Disable',
+            onPress: () => {
+              UsageTracker.requestIgnoreBatteryOptimization();
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    await enableTracker();
   }, [
+    trackerBusy,
+    trackerEnabled,
     hasUsagePermission,
     hasOverlayPermission,
     hasBatteryOptimizationIgnored,
-    trackerBusy,
+    enableTracker,
+    refreshMonitorStatus,
   ]);
 
   const handleToggleApp = useCallback(async (packageName: string) => {
@@ -262,7 +265,7 @@ export function useHomeViewModel() {
     blockedApps,
     goalsSummary: summarizeGoals(goals),
     handleOpenGoals,
-    trackerRunning,
+    trackerEnabled,
     trackerBusy,
     hasPermission:
       hasUsagePermission &&

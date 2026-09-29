@@ -1,13 +1,8 @@
 export interface UsageStatsNativeModule {
   hasPermission(): Promise<boolean>;
   requestPermission(): void;
-  getAppUsageToday(packageName: string): Promise<number>;
-  getForegroundApp(): Promise<string | null>;
-  sendAppToHome(): void;
-  bringAppToForeground(): void;
   hasOverlayPermission(): Promise<boolean>;
   requestOverlayPermission(): void;
-  showLimitNotification(title: string, message: string): void;
   isBatteryOptimizationIgnored(): Promise<boolean>;
   requestIgnoreBatteryOptimization(): void;
 }
@@ -24,6 +19,8 @@ export interface MonitorStatus {
   running: boolean;
   lastHeartbeatAt: number | null;
   lastStopReason: string | null;
+  /** Names of problems that leave the service running but not fully working. Empty when healthy. */
+  health: string[];
 }
 
 /** The blocked-app fields native needs. Icons never cross the bridge. */

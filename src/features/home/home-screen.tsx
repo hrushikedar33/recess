@@ -19,7 +19,7 @@ export default function HomeScreen() {
     blockedApps,
     goalsSummary,
     handleOpenGoals,
-    trackerRunning,
+    trackerEnabled,
     trackerBusy,
     shouldShowPermissionBanner,
     permissionBannerText,
@@ -82,20 +82,20 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={[
             styles.trackerToggle,
-            trackerRunning && styles.trackerToggleActive,
+            trackerEnabled && styles.trackerToggleActive,
             trackerBusy && styles.trackerToggleDisabled,
           ]}
           onPress={handleToggleTracker}
           disabled={trackerBusy}
         >
-          <View style={[styles.dot, trackerRunning && styles.dotActive]} />
+          <View style={[styles.dot, trackerEnabled && styles.dotActive]} />
           <Text
             style={[
               styles.trackerLabel,
-              trackerRunning && styles.trackerLabelActive,
+              trackerEnabled && styles.trackerLabelActive,
             ]}
           >
-            {trackerRunning ? 'ON' : 'OFF'}
+            {trackerEnabled ? 'ON' : 'OFF'}
           </Text>
         </TouchableOpacity>
       </View>
