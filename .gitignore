@@ -45,3 +45,7 @@ yarn-error.log*
 coverage/
 .cache/
 .tmp/
+
+# A JS bundle is generated at build time (release builds); never commit one
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/assets/index.android.bundle.meta
