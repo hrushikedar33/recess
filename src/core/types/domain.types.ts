@@ -21,3 +21,10 @@ export interface LimitReachedPayload {
   usageMinutes: number;
   remainingCooldownSeconds?: number;
 }
+
+export interface Goal {
+  id: string;
+  title: string;
+  done: boolean;
+  createdAt: number;
+}
