@@ -80,7 +80,8 @@ class MonitorTicker(
             }
         }
 
-        // Ticked even when nothing was polled, so blocks still end on time with the screen off.
+        ejectThrottle.noteForeground(foreground)
+        // Ticked even when nothing was polled, so a pending block end is never missed.
         engine.tick(nowMs, foreground, rules).forEach { perform(it, nowMs) }
         persistIfDue(nowMs)
         recordHealth(nowMs)

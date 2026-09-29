@@ -432,4 +432,18 @@ class MonitorTickerTest {
 
         assertFalse(HealthIssue.EJECT_INEFFECTIVE in prefs.healthIssues())
     }
+
+    @Test
+    fun `reopening the blocked app again and again is not reported as an eject that fails`() {
+        enableWithInstagramRule()
+        run(61)
+        repeat(8) {
+            foreground = "com.oneplus.launcher" // sent home
+            run(2)
+            foreground = INSTAGRAM // opened again
+            run(2)
+        }
+
+        assertFalse(HealthIssue.EJECT_INEFFECTIVE in prefs.healthIssues())
+    }
 }

@@ -8,6 +8,7 @@ data class MonitorStatus(
     val running: Boolean,
     val lastHeartbeatAt: Long?,
     val lastStopReason: String?,
+    val lastStopReasonAt: Long?,
     val health: List<String>,
 )
 
@@ -38,8 +39,8 @@ class RecessPrefs(
         readOrEmpty(KEY_BLOCKED_APPS, ConfigCodec::parseBlockedApps)
 
     /** Validates first: on a [ConfigFormatException] nothing is stored and the old rules stay. */
-    fun saveBlockedApps(json: String) {
-        val apps = ConfigCodec.parseBlockedApps(json)
+    fun saveBlockedApps(json: String?) {
+        val apps = ConfigCodec.parseBlockedApps(json ?: throw ConfigFormatException("apps: payload is missing"))
         store.putString(KEY_BLOCKED_APPS, ConfigCodec.encodeBlockedApps(apps))
         advanceConfigVersion()
     }
@@ -47,8 +48,8 @@ class RecessPrefs(
     fun goals(): List<GoalConfig> = readOrEmpty(KEY_GOALS, ConfigCodec::parseGoals)
 
     /** Validates first: on a [ConfigFormatException] nothing is stored and the old goals stay. */
-    fun saveGoals(json: String) {
-        val goals = ConfigCodec.parseGoals(json)
+    fun saveGoals(json: String?) {
+        val goals = ConfigCodec.parseGoals(json ?: throw ConfigFormatException("goals: payload is missing"))
         store.putString(KEY_GOALS, ConfigCodec.encodeGoals(goals))
         advanceConfigVersion()
     }
@@ -83,11 +84,15 @@ class RecessPrefs(
         return clock() - heartbeat <= HEARTBEAT_STALE_MS
     }
 
+    /** Recorded with its time, so the same reason happening twice can be told apart. */
     fun recordStopReason(reason: String) {
         store.putStringDurable(KEY_STOP_REASON, reason)
+        store.putLong(KEY_STOP_REASON_AT, clock())
     }
 
     fun lastStopReason(): String? = store.getString(KEY_STOP_REASON)
+
+    fun lastStopReasonAt(): Long? = store.getLong(KEY_STOP_REASON_AT)
 
     /** [running] is the live in-process flag, which is exact; the heartbeat is not. */
     fun status(running: Boolean): MonitorStatus =
@@ -96,6 +101,7 @@ class RecessPrefs(
             running,
             lastHeartbeatAt(),
             lastStopReason(),
+            lastStopReasonAt(),
             healthIssues().map { it.name }.sorted(),
         )
 
@@ -149,5 +155,6 @@ class RecessPrefs(
         private const val KEY_HEALTH = "healthIssues"
         private const val KEY_LIMIT_EVENT = "lastLimitEventJson"
         private const val KEY_STOP_REASON = "lastStopReason"
+        private const val KEY_STOP_REASON_AT = "lastStopReasonAt"
     }
 }

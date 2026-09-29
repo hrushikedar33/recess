@@ -61,4 +61,17 @@ class PersistPolicyTest {
 
         assertFalse(policy.shouldPersist(blocked, blocked, T0 + 1_000, lastPersistMs = T0))
     }
+
+    @Test
+    fun `nothing is written after the interval if only the tick time moved on`() {
+        val before = state(session = 5_000)
+        val laterTick = before.copy(lastTickMs = T0 + 20_000, lastForegroundPackage = null)
+
+        assertFalse(policy.shouldPersist(before, laterTick, T0 + 20_000, lastPersistMs = T0))
+    }
+
+    @Test
+    fun `usage that really changed is still written once the interval has passed`() {
+        assertTrue(policy.shouldPersist(state(session = 5_000), state(session = 9_000), T0 + 10_000, lastPersistMs = T0))
+    }
 }

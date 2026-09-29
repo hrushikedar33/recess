@@ -38,22 +38,9 @@ class MonitorService : Service() {
     private lateinit var prefs: RecessPrefs
     private var thread: HandlerThread? = null
     private var handler: Handler? = null
-    private var ticker: MonitorTicker? = null
+    private var loop: TickLoop? = null
     private var screenReceiver: BroadcastReceiver? = null
     private var loopStarted = false
-
-    private val tickLoop =
-        object : Runnable {
-            override fun run() {
-                val outcome = ticker?.tick() ?: return
-                if (outcome.stop) {
-                    Log.i(TAG, "Monitoring turned off; stopping the service")
-                    stopSelf()
-                    return
-                }
-                handler?.postDelayed(this, outcome.nextDelayMs)
-            }
-        }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -82,8 +69,12 @@ class MonitorService : Service() {
         return START_STICKY
     }
 
+    /**
+     * Swiping the app away does not stop this service (stopWithTask is false), so nothing is
+     * recorded as an interruption. Some phone makers kill it anyway; the restart nudge covers
+     * that, and the next start records what really happened to the process.
+     */
     override fun onTaskRemoved(rootIntent: Intent?) {
-        prefs.recordStopReason("task_removed")
         scheduleRestartIfWanted()
         super.onTaskRemoved(rootIntent)
     }
@@ -98,12 +89,15 @@ class MonitorService : Service() {
         MonitorRuntime.isRunning = false
         screenReceiver?.let { runCatching { unregisterReceiver(it) } }
         screenReceiver = null
+        loop?.cancel()
         handler?.removeCallbacksAndMessages(null)
         thread?.quitSafely()
         // Let an old loop finish before a new service instance can start one, so two never race.
         runCatching { thread?.join(JOIN_TIMEOUT_MS) }
         thread = null
-        prefs.recordStopReason(if (prefs.isMonitoringEnabled()) "destroyed_while_enabled" else "stopped_by_user")
+        val userStop = MonitorRuntime.userStopRequested
+        MonitorRuntime.userStopRequested = false
+        prefs.recordStopReason(StopReasonPolicy.onDestroy(userStop, prefs.isMonitoringEnabled()))
         scheduleRestartIfWanted()
         super.onDestroy()
     }
@@ -139,10 +133,20 @@ class MonitorService : Service() {
 
         val worker = HandlerThread("RecessMonitor").also { it.start() }
         thread = worker
-        handler = Handler(worker.looper)
-        ticker = buildTicker()
+        val handler = Handler(worker.looper).also { this.handler = it }
+        val ticker = buildTicker()
+        val tickLoop =
+            TickLoop(
+                poster = HandlerPoster(handler),
+                tick = ticker::tick,
+                onStop = {
+                    Log.i(TAG, "Monitoring turned off; stopping the service")
+                    stopSelf()
+                },
+            )
+        loop = tickLoop
         registerScreenReceiver()
-        handler?.post(tickLoop)
+        tickLoop.start()
         Log.i(TAG, "Monitor loop started")
     }
 
@@ -163,8 +167,10 @@ class MonitorService : Service() {
 
     private fun buildLimitAlerts(): LimitAlerts {
         val quotes = QuoteRepository(QuoteAssets.load(this), RecessPrefsFactory.store(this))
-        val timeFormat = DateFormat.getTimeInstance(DateFormat.SHORT)
-        return LimitAlerts(quotes, prefs, System::currentTimeMillis) { timeFormat.format(Date(it)) }
+        // Built on every call so a changed locale or timezone is honoured for the whole life of the service.
+        return LimitAlerts(quotes, prefs, System::currentTimeMillis) {
+            DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it))
+        }
     }
 
     /**
@@ -177,8 +183,8 @@ class MonitorService : Service() {
             object : BroadcastReceiver() {
                 override fun onReceive(context: Context, intent: Intent) {
                     when (intent.action) {
-                        Intent.ACTION_SCREEN_OFF -> pauseLoop()
-                        Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> resumeLoop()
+                        Intent.ACTION_SCREEN_OFF -> loop?.pause()
+                        Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> loop?.resume()
                     }
                 }
             }
@@ -194,18 +200,6 @@ class MonitorService : Service() {
             registerReceiver(receiver, filter)
         }
         screenReceiver = receiver
-    }
-
-    private fun pauseLoop() {
-        val h = handler ?: return
-        h.removeCallbacks(tickLoop)
-        h.post { ticker?.tick() }
-    }
-
-    private fun resumeLoop() {
-        val h = handler ?: return
-        h.removeCallbacks(tickLoop)
-        h.post(tickLoop)
     }
 
     /**

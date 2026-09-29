@@ -57,4 +57,45 @@ class EjectThrottleTest {
 
         assertFalse(afterQuiet.ineffective)
     }
+
+    @Test
+    fun `reopening the app over and over is not called ineffective while it keeps going away in between`() {
+        val verdicts =
+            (0 until 8).map {
+                val v = throttle.onEject(PKG, T0 + it * 2_000L)
+                throttle.noteForeground("com.oneplus.launcher") // home screen showed up after the eject
+                v
+            }
+
+        assertFalse(verdicts.any { it.ineffective })
+    }
+
+    @Test
+    fun `another app coming to the front resets only the blocked app that left`() {
+        (0 until 4).forEach { throttle.onEject(PKG, T0 + it * 2_000L) }
+        (0 until 4).forEach { throttle.onEject("com.example.other", T0 + it * 2_000L) }
+
+        throttle.noteForeground("com.example.other")
+
+        assertFalse(throttle.onEject(PKG, T0 + 10_000L).ineffective)
+        assertTrue(throttle.onEject("com.example.other", T0 + 10_000L).ineffective)
+    }
+
+    @Test
+    fun `the same app staying in front does not reset the count`() {
+        (0 until 4).forEach {
+            throttle.onEject(PKG, T0 + it * 2_000L)
+            throttle.noteForeground(PKG)
+        }
+
+        assertTrue(throttle.onEject(PKG, T0 + 8_000L).ineffective)
+    }
+
+    @Test
+    fun `nothing in front resets the count`() {
+        (0 until 4).forEach { throttle.onEject(PKG, T0 + it * 2_000L) }
+        throttle.noteForeground(null)
+
+        assertFalse(throttle.onEject(PKG, T0 + 8_000L).ineffective)
+    }
 }

@@ -17,6 +17,16 @@ class EjectThrottle(
 
     private val states = mutableMapOf<String, State>()
 
+    /**
+     * Tells the throttle what is in front now. An eject only counts as failing while the *same*
+     * app stays in front; once it (or anything else) has been replaced, the ejects worked.
+     */
+    fun noteForeground(currentPackage: String?) {
+        for ((packageName, state) in states) {
+            if (packageName != currentPackage) state.streak = 0
+        }
+    }
+
     fun onEject(packageName: String, nowMs: Long): Verdict {
         val state = states[packageName]
         if (state == null) {

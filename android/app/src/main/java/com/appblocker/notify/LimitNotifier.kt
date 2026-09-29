@@ -22,6 +22,13 @@ class LimitNotifier(context: Context) {
         }
 
         val open = BreakIntents.pending(context)
+        // What anyone can read on a locked screen: the headline only, never the quote or the goals.
+        val publicVersion =
+            NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(com.appblocker.R.drawable.ic_notification)
+                .setContentTitle(message.title)
+                .setContentText(message.text)
+                .build()
         val builder =
             NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(com.appblocker.R.drawable.ic_notification)
@@ -33,11 +40,13 @@ class LimitNotifier(context: Context) {
                 .setOnlyAlertOnce(true)
                 .setAutoCancel(true)
                 .setContentIntent(open)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setPublicVersion(publicVersion)
         // Where the OS allows it (Android 14+ needs a user grant), also take over the screen.
         if (canUseFullScreenIntent()) builder.setFullScreenIntent(open, true)
 
         try {
-            manager.notify(idFor(packageName), builder.build())
+            manager.notify(packageName, NOTIFICATION_ID, builder.build())
             Log.i(TAG, "limit notification posted")
         } catch (e: SecurityException) {
             Log.w(TAG, "Could not post the limit notification", e)
@@ -45,7 +54,7 @@ class LimitNotifier(context: Context) {
     }
 
     fun cancel(packageName: String) {
-        NotificationManagerCompat.from(context).cancel(idFor(packageName))
+        NotificationManagerCompat.from(context).cancel(packageName, NOTIFICATION_ID)
     }
 
     private fun canUseFullScreenIntent(): Boolean =
@@ -61,12 +70,10 @@ class LimitNotifier(context: Context) {
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    /** One notification per app, so a second app's block never replaces or cancels the first. */
-    private fun idFor(packageName: String): Int = BASE_ID + (packageName.hashCode() and 0xFFFF)
-
     private companion object {
         const val TAG = "Recess"
         const val CHANNEL_ID = "recess_limit_alerts"
-        const val BASE_ID = 40_000
+        /** One notification per app: the package name is the tag, so ids can never collide with other notifications. */
+        const val NOTIFICATION_ID = 40_001
     }
 }

@@ -8,4 +8,11 @@ package com.appblocker.service
 object MonitorRuntime {
     @Volatile
     var isRunning: Boolean = false
+
+    /**
+     * Set when *we* stop the service on the user's behalf, so tearing it down is never mistaken for
+     * an interruption. Cleared when it is consumed or the service is started again.
+     */
+    @Volatile
+    var userStopRequested: Boolean = false
 }

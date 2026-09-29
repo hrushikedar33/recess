@@ -183,7 +183,7 @@ class RecessPrefsTest {
         prefs.recordHeartbeat()
         prefs.recordStopReason("destroyed")
 
-        assertEquals(MonitorStatus(true, true, T0, "destroyed", emptyList()), prefs.status(running = true))
+        assertEquals(MonitorStatus(true, true, T0, "destroyed", T0, emptyList()), prefs.status(running = true))
     }
 
     @Test
@@ -335,5 +335,49 @@ class RecessPrefsTest {
         prefs.saveLimitEvent("two")
 
         assertEquals("two", prefs.lastLimitEventJson())
+    }
+
+    // ---- a missing payload -------------------------------------------------------------------
+
+    @Test
+    fun `a missing rules payload is rejected like any malformed one and keeps the old rules`() {
+        prefs.saveBlockedApps(ONE_APP)
+
+        assertThrows(ConfigFormatException::class.java) { prefs.saveBlockedApps(null) }
+
+        assertEquals(listOf("com.instagram.android"), prefs.blockedApps().map { it.packageName })
+    }
+
+    @Test
+    fun `a missing goals payload is rejected and keeps the old goals`() {
+        prefs.saveGoals(ONE_GOAL)
+
+        assertThrows(ConfigFormatException::class.java) { prefs.saveGoals(null) }
+
+        assertEquals(listOf("g1"), prefs.goals().map { it.id })
+    }
+
+    // ---- when the last stop happened ---------------------------------------------------------
+
+    @Test
+    fun `a stop reason is stored with the time it was recorded`() {
+        prefs.recordStopReason("destroyed_while_enabled")
+
+        assertEquals(T0, prefs.lastStopReasonAt())
+    }
+
+    @Test
+    fun `the same reason recorded later gets a later time, so it can be told apart`() {
+        prefs.recordStopReason("destroyed_while_enabled")
+        now = T0 + 3_600_000L
+
+        prefs.recordStopReason("destroyed_while_enabled")
+
+        assertEquals(T0 + 3_600_000L, prefs.lastStopReasonAt())
+    }
+
+    @Test
+    fun `there is no stop time before any stop`() {
+        assertNull(prefs.lastStopReasonAt())
     }
 }

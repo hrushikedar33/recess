@@ -70,6 +70,8 @@ class MonitorConfigModule(reactContext: ReactApplicationContext) :
             if (heartbeat != null) map.putDouble("lastHeartbeatAt", heartbeat.toDouble()) else map.putNull("lastHeartbeatAt")
             val reason = status.lastStopReason
             if (reason != null) map.putString("lastStopReason", reason) else map.putNull("lastStopReason")
+            val reasonAt = status.lastStopReasonAt
+            if (reasonAt != null) map.putDouble("lastStopReasonAt", reasonAt.toDouble()) else map.putNull("lastStopReasonAt")
             map.putArray("health", Arguments.fromList(status.health))
             promise.resolve(map)
         } catch (e: Exception) {
@@ -88,7 +90,7 @@ class MonitorConfigModule(reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun syncBlockedApps(json: String, promise: Promise) {
+    fun syncBlockedApps(json: String?, promise: Promise) {
         try {
             prefs.saveBlockedApps(json)
             Log.i(TAG, "Synced ${prefs.blockedApps().size} rule(s)")
@@ -101,7 +103,7 @@ class MonitorConfigModule(reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun syncGoals(json: String, promise: Promise) {
+    fun syncGoals(json: String?, promise: Promise) {
         try {
             prefs.saveGoals(json)
             Log.i(TAG, "Synced ${prefs.goals().size} goal(s)")

@@ -16,6 +16,9 @@ class PersistPolicy(private val intervalMs: Long = DEFAULT_INTERVAL_MS) {
     ): Boolean {
         if (lastPersistMs == null) return true
         if (blocksOf(previous) != blocksOf(current)) return true
+        // Compare the usage itself, not the whole state: the tick time changes every tick, which
+        // would otherwise make every interval write happen even while nothing is being counted.
+        if (previous.apps == current.apps) return false
         return nowMs - lastPersistMs >= intervalMs
     }
 
