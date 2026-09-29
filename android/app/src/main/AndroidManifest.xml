@@ -62,8 +62,7 @@
         <intent-filter>
           <action android:name="android.intent.action.VIEW" />
           <category android:name="android.intent.category.DEFAULT" />
-          <category android:name="android.intent.category.BROWSABLE" />
-          <data android:scheme="recess" />
+          <data android:scheme="recess" android:host="break" />
         </intent-filter>
       </activity>
     </application>

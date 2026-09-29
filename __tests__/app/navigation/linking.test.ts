@@ -21,6 +21,25 @@ describe('deep links', () => {
     expect(state?.routes[0].name).toBe(Routes.Break);
   });
 
+  describe('the URL filter, which runs before any parsing', () => {
+    const accepts = (url: string) => linking.filter?.(url) ?? true;
+
+    it('accepts exactly the link the monitor uses', () => {
+      expect(accepts('recess://break')).toBe(true);
+    });
+
+    it.each([
+      ['a query string', 'recess://break?x=%E0%A4%A'],
+      ['a fragment', 'recess://break#frag'],
+      ['a trailing path', 'recess://break/extra'],
+      ['another route', 'recess://goals'],
+      ['another scheme', 'https://break'],
+      ['nothing', ''],
+    ])('rejects %s without parsing it', (_name, url) => {
+      expect(accepts(url)).toBe(false);
+    });
+  });
+
   it('accepts the recess:// prefix and no other', () => {
     expect(linking.prefixes).toEqual(['recess://']);
   });
