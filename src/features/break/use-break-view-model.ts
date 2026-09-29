@@ -1,22 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Linking } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { BackHandler, Linking } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCases } from '../../app/di';
-import { Routes } from '../../app/navigation/routes';
-import { RootStackParamList } from '../../app/navigation/types';
 import { Goal } from '../../core/types/domain.types';
 import { LimitEvent } from '../../core/types/native.types';
 import { logger } from '../../core/utils/logger';
 import { formatDuration } from '../../core/utils/time.utils';
 import { remainingSeconds } from './break-countdown';
 
-type NavProp = StackNavigationProp<RootStackParamList>;
-
 export type BreakStatus = 'loading' | 'active' | 'over' | 'none';
 
 export function useBreakViewModel() {
-  const navigation = useNavigation<NavProp>();
   const [event, setEvent] = useState<LimitEvent | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -68,14 +62,14 @@ export function useBreakViewModel() {
     }
   }, []);
 
-  /** Never a trap: goes back if it can, otherwise (opened cold from the link) to Home. */
+  /**
+   * Leaves Recess, which returns to whatever was underneath (the phone's home screen, after the
+   * takeover). The monitor keeps running in its own service. It is never a trap: the system back
+   * button also works on this screen.
+   */
   const handleDone = useCallback(() => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.reset({ index: 0, routes: [{ name: Routes.Home }] });
-    }
-  }, [navigation]);
+    BackHandler.exitApp();
+  }, []);
 
   const remaining = event ? remainingSeconds(event.blockedUntilMs, now) : 0;
   const isDaily = event?.reason === 'DAILY_LIMIT';

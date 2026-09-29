@@ -1,9 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
-import { Linking, NativeModules } from 'react-native';
+import { BackHandler, Linking, NativeModules } from 'react-native';
 import { GOALS_STORAGE_KEY } from '@core/constants/storage.keys';
 import { LimitEvent } from '@core/types/native.types';
-import { Routes } from '@app/navigation/routes';
 import { useBreakViewModel } from '@features/break/use-break-view-model';
 
 const mockNavigation = {
@@ -180,28 +179,40 @@ describe('useBreakViewModel', () => {
     );
   });
 
-  it('goes back when the user is done and there is somewhere to go back to', async () => {
+  it("leaves Recess when the user is done, so the phone's home screen is what they see", async () => {
     storedEvent();
+    const exitApp = jest
+      .spyOn(BackHandler, 'exitApp')
+      .mockImplementation(() => undefined);
     const { result } = await renderBreak();
 
     act(() => result.current.handleDone());
 
-    expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
-    expect(mockNavigation.reset).not.toHaveBeenCalled();
+    expect(exitApp).toHaveBeenCalledTimes(1);
   });
 
-  it('goes home when the screen was opened cold from the link and there is nothing behind it', async () => {
+  it('does the same when opened cold from the link, with nothing behind it', async () => {
     storedEvent();
     mockNavigation.canGoBack.mockReturnValue(false);
+    const exitApp = jest
+      .spyOn(BackHandler, 'exitApp')
+      .mockImplementation(() => undefined);
     const { result } = await renderBreak();
 
     act(() => result.current.handleDone());
 
-    expect(mockNavigation.reset).toHaveBeenCalledWith({
-      index: 0,
-      routes: [{ name: Routes.Home }],
-    });
+    expect(exitApp).toHaveBeenCalledTimes(1);
+  });
+
+  it('never keeps the user inside Recess: done does not navigate to another Recess screen', async () => {
+    storedEvent();
+    jest.spyOn(BackHandler, 'exitApp').mockImplementation(() => undefined);
+    const { result } = await renderBreak();
+
+    act(() => result.current.handleDone());
+
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    expect(mockNavigation.reset).not.toHaveBeenCalled();
   });
 
   it('shows the new event when another limit is reached while the screen is open', async () => {
