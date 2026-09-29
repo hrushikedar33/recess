@@ -2,6 +2,7 @@ package com.appblocker.modules.monitor
 
 import android.util.Log
 import com.appblocker.service.MonitorRuntime
+import com.appblocker.service.MonitorServiceController
 import com.appblocker.store.ConfigFormatException
 import com.appblocker.store.RecessPrefs
 import com.appblocker.store.RecessPrefsFactory
@@ -31,13 +32,22 @@ class MonitorConfigModule(reactContext: ReactApplicationContext) :
     private val prefs: RecessPrefs
         get() = RecessPrefsFactory.get(reactApplicationContext)
 
+    /**
+     * Records the user's intent, then starts or stops the service to match. The intent is written
+     * first and verified; if the service then cannot be started the intent is put back, so the
+     * toggle never claims ON while nothing runs.
+     */
     @ReactMethod
     fun setMonitoringEnabled(enabled: Boolean, promise: Promise) {
+        val previous = prefs.isMonitoringEnabled()
         try {
             prefs.setMonitoringEnabled(enabled)
+            if (enabled) MonitorServiceController.start(reactApplicationContext) else MonitorServiceController.stop(reactApplicationContext)
             Log.i(TAG, "Monitoring intent set to $enabled")
             promise.resolve(null)
         } catch (e: Exception) {
+            runCatching { prefs.setMonitoringEnabled(previous) }
+            prefs.recordStopReason("enable_failed: ${e.javaClass.simpleName}")
             promise.reject(ERROR_MONITOR, e.message, e)
         }
     }
