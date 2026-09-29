@@ -127,8 +127,14 @@ export function useHomeViewModel() {
   }, [trackerEnabled]);
 
   const stopReason = monitorStatus?.lastStopReason ?? null;
+  // Identify an interruption by what happened *and when*, so the same kind of interruption
+  // happening again is shown again instead of being taken for the one already dismissed.
+  const stopKey =
+    stopReason === null
+      ? null
+      : `${stopReason}@${monitorStatus?.lastStopReasonAt ?? ''}`;
   const interruptionNote =
-    trackerEnabled && stopReason !== notices.ackedStopReason
+    trackerEnabled && stopKey !== notices.ackedStopReason
       ? describeStopReason(stopReason)
       : null;
 
@@ -141,12 +147,12 @@ export function useHomeViewModel() {
       : null;
 
   const handleDismissInterruption = useCallback(async () => {
-    if (stopReason === null) {
+    if (stopKey === null) {
       return;
     }
-    await useCases.notices.acknowledgeStopReason(stopReason);
-    setNotices((previous) => ({ ...previous, ackedStopReason: stopReason }));
-  }, [stopReason]);
+    await useCases.notices.acknowledgeStopReason(stopKey);
+    setNotices((previous) => ({ ...previous, ackedStopReason: stopKey }));
+  }, [stopKey]);
 
   const handleDismissOemGuidance = useCallback(async () => {
     await useCases.notices.dismissOemGuidance();

@@ -28,6 +28,7 @@ const status = (overrides: Partial<MonitorStatus> = {}): MonitorStatus => ({
   running: false,
   lastHeartbeatAt: null,
   lastStopReason: null,
+  lastStopReasonAt: null,
   health: [],
   ...overrides,
 });
@@ -310,6 +311,55 @@ describe('useHomeViewModel: making problems visible', () => {
     await waitFor(() =>
       expect(second.result.current.interruptionNote).not.toBeNull(),
     );
+  });
+
+  it('shows the same kind of interruption again when it happens a second time', async () => {
+    running({
+      lastStopReason: 'destroyed_while_enabled',
+      lastStopReasonAt: 1000,
+    });
+    const first = await renderHome();
+    await waitFor(() =>
+      expect(first.result.current.interruptionNote).not.toBeNull(),
+    );
+    await act(async () => {
+      await first.result.current.handleDismissInterruption();
+    });
+    expect(first.result.current.interruptionNote).toBeNull();
+    first.unmount();
+
+    // Same reason, but it happened again, later.
+    running({
+      lastStopReason: 'destroyed_while_enabled',
+      lastStopReasonAt: 2000,
+    });
+    const second = await renderHome();
+
+    await waitFor(() =>
+      expect(second.result.current.interruptionNote).not.toBeNull(),
+    );
+  });
+
+  it('does not show a dismissed interruption again just because the app was reopened', async () => {
+    running({
+      lastStopReason: 'destroyed_while_enabled',
+      lastStopReasonAt: 1000,
+    });
+    const first = await renderHome();
+    await waitFor(() =>
+      expect(first.result.current.interruptionNote).not.toBeNull(),
+    );
+    await act(async () => {
+      await first.result.current.handleDismissInterruption();
+    });
+    first.unmount();
+
+    const second = await renderHome();
+    await waitFor(() =>
+      expect(second.result.current.trackerEnabled).toBe(true),
+    );
+
+    expect(second.result.current.interruptionNote).toBeNull();
   });
 
   it("turns the monitor's health report into a warning the user can read", async () => {

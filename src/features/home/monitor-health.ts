@@ -6,7 +6,12 @@ export interface MonitorHealthView {
   tone: HealthTone;
   headline: string;
   details: string[];
+  /** True when the user can fix a reported problem on the app's own system settings page. */
+  opensSettings: boolean;
 }
+
+/** Problems the user resolves in the app's own settings (notification and battery switches). */
+const FIXED_IN_APP_SETTINGS = ['NOTIFICATIONS_BLOCKED', 'BATTERY_OPTIMIZED'];
 
 const MESSAGES: Record<string, string> = {
   USAGE_ACCESS_MISSING:
@@ -49,13 +54,19 @@ export function describeMonitorHealth(
   nowMs: number,
 ): MonitorHealthView {
   if (!status || !status.enabled) {
-    return { tone: 'off', headline: 'Monitoring is off', details: [] };
+    return {
+      tone: 'off',
+      headline: 'Monitoring is off',
+      details: [],
+      opensSettings: false,
+    };
   }
   if (!status.running) {
     return {
       tone: 'warning',
       headline: 'Monitoring is starting',
       details: [],
+      opensSettings: false,
     };
   }
 
@@ -78,6 +89,9 @@ export function describeMonitorHealth(
       tone: 'warning',
       headline: 'Monitoring needs attention',
       details: problems,
+      opensSettings: status.health.some((issue) =>
+        FIXED_IN_APP_SETTINGS.includes(issue),
+      ),
     };
   }
   return {
@@ -87,5 +101,6 @@ export function describeMonitorHealth(
       status.lastHeartbeatAt === null
         ? []
         : [`Last checked ${formatAgo(sinceCheckIn)}`],
+    opensSettings: false,
   };
 }

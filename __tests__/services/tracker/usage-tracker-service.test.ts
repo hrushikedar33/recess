@@ -9,6 +9,7 @@ const status = (overrides: Partial<MonitorStatus> = {}): MonitorStatus => ({
   running: false,
   lastHeartbeatAt: null,
   lastStopReason: null,
+  lastStopReasonAt: null,
   health: [],
   ...overrides,
 });
@@ -53,13 +54,28 @@ describe('UsageTracker', () => {
       expect(native.setMonitoringEnabled).toHaveBeenCalledWith(true);
     });
 
-    it('refuses, without turning anything on, when notifications are denied', async () => {
+    it('still turns monitoring on when notifications are denied: only the alert is lost, not the blocking', async () => {
       request.mockResolvedValue(PermissionsAndroid.RESULTS.DENIED);
 
-      await expect(UsageTracker.start()).rejects.toThrow(
-        'Notification permission is required',
-      );
-      expect(native.setMonitoringEnabled).not.toHaveBeenCalled();
+      await UsageTracker.start();
+
+      expect(native.setMonitoringEnabled).toHaveBeenCalledWith(true);
+    });
+
+    it('still turns monitoring on when the user chose "don\'t ask again"', async () => {
+      request.mockResolvedValue(PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN);
+
+      await UsageTracker.start();
+
+      expect(native.setMonitoringEnabled).toHaveBeenCalledWith(true);
+    });
+
+    it('still turns monitoring on if asking for the permission itself fails', async () => {
+      request.mockRejectedValue(new Error('activity gone'));
+
+      await UsageTracker.start();
+
+      expect(native.setMonitoringEnabled).toHaveBeenCalledWith(true);
     });
 
     it('does nothing off Android', async () => {

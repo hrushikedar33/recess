@@ -10,20 +10,26 @@ import PermissionsService from '../permissions/permissions-service';
  * about the result.
  */
 const UsageTracker = {
-  /** Records the intent to monitor and starts the service. Throws if it cannot be started. */
+  /**
+   * Records the intent to monitor and starts the service. Throws only if the service cannot be
+   * started, never for a missing optional permission.
+   */
   start: async (): Promise<void> => {
     if (Platform.OS !== 'android') {
       logger.info('[UsageTracker] Monitoring is only supported on Android');
       return;
     }
-    if (
-      Platform.Version >= 33 &&
-      PermissionsAndroid.RESULTS.GRANTED !==
-        (await PermissionsAndroid.request(
+    if (Platform.Version >= 33) {
+      // Asked for, never required. Without it the block still works and only the alert is lost;
+      // the health card says so. Refusing to start here would leave the toggle stuck OFF for anyone
+      // who chose "don't ask again".
+      try {
+        await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-        ))
-    ) {
-      throw new Error('Notification permission is required to start tracking');
+        );
+      } catch (error) {
+        logger.warn('[UsageTracker] Could not ask for notifications', error);
+      }
     }
     await MonitorAdapter.setMonitoringEnabled(true);
   },

@@ -29,6 +29,7 @@ Object.assign(NativeModules, {
       running: false,
       lastHeartbeatAt: null,
       lastStopReason: null,
+      lastStopReasonAt: null,
       health: [],
     })),
     getLimitEvent: jest.fn(async () => null),

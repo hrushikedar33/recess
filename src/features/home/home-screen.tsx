@@ -130,6 +130,16 @@ export default function HomeScreen() {
                 {detail}
               </Text>
             ))}
+            {monitorHealth.opensSettings && (
+              <TouchableOpacity
+                style={styles.noticeButton}
+                onPress={handleOpenAppSettings}
+                accessibilityRole="button"
+                accessibilityLabel="Open Recess settings"
+              >
+                <Text style={styles.noticeButtonText}>Open settings</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}

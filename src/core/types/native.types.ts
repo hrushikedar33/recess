@@ -19,6 +19,8 @@ export interface MonitorStatus {
   running: boolean;
   lastHeartbeatAt: number | null;
   lastStopReason: string | null;
+  /** When that stop was recorded, so the same reason happening twice can be told apart. */
+  lastStopReasonAt: number | null;
   /** Names of problems that leave the service running but not fully working. Empty when healthy. */
   health: string[];
 }

@@ -8,6 +8,7 @@ const status = (overrides: Partial<MonitorStatus> = {}): MonitorStatus => ({
   running: true,
   lastHeartbeatAt: NOW - 5_000,
   lastStopReason: null,
+  lastStopReasonAt: null,
   health: [],
   ...overrides,
 });
@@ -18,6 +19,7 @@ describe('describeMonitorHealth', () => {
       tone: 'off',
       headline: 'Monitoring is off',
       details: [],
+      opensSettings: false,
     });
   });
 
@@ -115,5 +117,27 @@ describe('describeMonitorHealth', () => {
     );
 
     expect(result.tone).toBe('ok');
+  });
+
+  it.each(['NOTIFICATIONS_BLOCKED', 'BATTERY_OPTIMIZED'])(
+    'offers to open settings for %s, which the user fixes there',
+    (issue) => {
+      expect(
+        describeMonitorHealth(status({ health: [issue] }), NOW).opensSettings,
+      ).toBe(true);
+    },
+  );
+
+  it.each(['USAGE_ACCESS_MISSING', 'POLL_FAILING', 'RULES_UNREADABLE'])(
+    'does not offer settings for %s',
+    (issue) => {
+      expect(
+        describeMonitorHealth(status({ health: [issue] }), NOW).opensSettings,
+      ).toBe(false);
+    },
+  );
+
+  it('does not offer settings when everything is fine', () => {
+    expect(describeMonitorHealth(status(), NOW).opensSettings).toBe(false);
   });
 });
