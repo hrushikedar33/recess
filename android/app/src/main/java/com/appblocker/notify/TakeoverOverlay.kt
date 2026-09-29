@@ -162,20 +162,26 @@ class TakeoverOverlay(context: Context) {
         }
     }
 
+    /*
+     * Both buttons start the launch BEFORE taking the window down. A background service may only
+     * start an activity while it has a visible window (the system log says
+     * BAL_ALLOW_NON_APP_VISIBLE_WINDOW when that is what let it through); removing the window first
+     * made the launch get refused, so the app stayed in front and the cover popped straight back.
+     */
     private fun goHome() {
-        removeNow()
         val home =
             Intent(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_HOME)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { context.startActivity(home) }
-            .onFailure { Log.w(TAG, "Could not go home from the takeover", it) }
+        launchThenRemove(home, "go home")
     }
 
-    private fun openRecess() {
+    private fun openRecess() = launchThenRemove(BreakIntents.intent(context), "open the Break screen")
+
+    private fun launchThenRemove(intent: Intent, what: String) {
+        runCatching { context.startActivity(intent) }
+            .onFailure { Log.w(TAG, "Could not $what from the takeover", it) }
         removeNow()
-        runCatching { context.startActivity(BreakIntents.intent(context)) }
-            .onFailure { Log.w(TAG, "Could not open the Break screen from the takeover", it) }
     }
 
     private fun label(

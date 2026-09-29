@@ -205,7 +205,10 @@ so killing the process cannot be used to skip a cooldown.
 **AD5 - "Kill" is "keep it covered until the cooldown ends".** Android does not allow killing other
 apps, and on some phones not even sending them home. The block is announced once; after that,
 every tick the blocked app is in front the cover window is (idempotently) put up, and a HOME
-intent is tried at most every 1.5 s, or every 30 s once the phone has clearly refused it.
+intent is tried at most every 1.5 s, or every 30 s once the phone has clearly refused it. (On the
+test phone the home-screen launch is accepted only while Recess has a visible window, i.e. while
+the cover is up, so the cover doubles as the thing that lets the app be sent home. The cover's
+buttons therefore launch first and remove the window afterwards.)
 
 **AD6 - Bundled quotes first; online quotes are an opt-in extra.** The service must work with no
 network at the moment a limit is hit. Fetched quotes are treated as hostile input (allowlist,
