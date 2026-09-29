@@ -29,6 +29,7 @@ export interface BlockedAppSyncPayload {
   appName: string;
   limitMinutes: number;
   cooldownMinutes: number;
+  dailyLimitMinutes?: number;
   isActive: boolean;
 }
 

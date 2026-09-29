@@ -4,12 +4,14 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from '../../shared/theme/colors';
 import { useAddAppViewModel } from './use-add-app-view-model';
 
 export default function AddAppScreen() {
@@ -23,93 +25,162 @@ export default function AddAppScreen() {
     setLimitMinutes,
     cooldownMinutes,
     setCooldownMinutes,
+    dailyLimitMinutes,
+    setDailyLimitMinutes,
+    error,
+    canSave,
     saving,
     handleSave,
     handleBack,
     handleSelectApp,
     presetLimits,
     presetCooldowns,
+    presetDailyLimits,
   } = useAddAppViewModel();
 
   if (selectedApp) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.configScreen}>
-          {/* App Preview */}
-          <View style={styles.configHeader}>
-            {selectedApp.iconBase64 ? (
-              <Image
-                source={{ uri: selectedApp.iconBase64 }}
-                style={styles.bigIconImage}
-              />
-            ) : (
-              <View style={styles.bigIcon}>
-                <Text style={styles.bigIconText}>
-                  {selectedApp.appName.charAt(0).toUpperCase()}
-                </Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* App Preview */}
+            <View style={styles.configHeader}>
+              {selectedApp.iconBase64 ? (
+                <Image
+                  source={{ uri: selectedApp.iconBase64 }}
+                  style={styles.bigIconImage}
+                />
+              ) : (
+                <View style={styles.bigIcon}>
+                  <Text style={styles.bigIconText}>
+                    {selectedApp.appName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.configAppName}>{selectedApp.appName}</Text>
+              <Text style={styles.configAppPkg}>{selectedApp.packageName}</Text>
+            </View>
+
+            {/* Limit Picker */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Session limit</Text>
+              <View style={styles.presetRow}>
+                {presetLimits.map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[
+                      styles.presetChip,
+                      limitMinutes === m && styles.presetChipActive,
+                    ]}
+                    onPress={() => setLimitMinutes(m)}
+                  >
+                    <Text
+                      style={[
+                        styles.presetChipText,
+                        limitMinutes === m && styles.presetChipTextActive,
+                      ]}
+                    >
+                      {m}m
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            )}
-            <Text style={styles.configAppName}>{selectedApp.appName}</Text>
-            <Text style={styles.configAppPkg}>{selectedApp.packageName}</Text>
-          </View>
+              <Text style={styles.presetDesc}>
+                The app is closed after {limitMinutes} minutes in one go
+              </Text>
+            </View>
 
-          {/* Limit Picker */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Daily limit</Text>
-            <View style={styles.presetRow}>
-              {presetLimits.map((m) => (
+            {/* Cooldown Picker */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Cooldown period</Text>
+              <View style={styles.presetRow}>
+                {presetCooldowns.map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[
+                      styles.presetChip,
+                      cooldownMinutes === m && styles.presetChipActive,
+                    ]}
+                    onPress={() => setCooldownMinutes(m)}
+                  >
+                    <Text
+                      style={[
+                        styles.presetChipText,
+                        cooldownMinutes === m && styles.presetChipTextActive,
+                      ]}
+                    >
+                      {m}m
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.presetDesc}>
+                Wait {cooldownMinutes} minutes before you can reopen the app
+              </Text>
+            </View>
+
+            {/* Daily budget */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Daily budget</Text>
+              <View style={styles.presetRow}>
+                {presetDailyLimits.map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[
+                      styles.presetChip,
+                      dailyLimitMinutes === m && styles.presetChipActive,
+                    ]}
+                    onPress={() => setDailyLimitMinutes(m)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Daily budget ${m} minutes`}
+                    accessibilityState={{ selected: dailyLimitMinutes === m }}
+                  >
+                    <Text
+                      style={[
+                        styles.presetChipText,
+                        dailyLimitMinutes === m && styles.presetChipTextActive,
+                      ]}
+                    >
+                      {m}m
+                    </Text>
+                  </TouchableOpacity>
+                ))}
                 <TouchableOpacity
-                  key={m}
                   style={[
                     styles.presetChip,
-                    limitMinutes === m && styles.presetChipActive,
+                    dailyLimitMinutes === null && styles.presetChipActive,
                   ]}
-                  onPress={() => setLimitMinutes(m)}
+                  onPress={() => setDailyLimitMinutes(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="No daily budget"
+                  accessibilityState={{ selected: dailyLimitMinutes === null }}
                 >
                   <Text
                     style={[
                       styles.presetChipText,
-                      limitMinutes === m && styles.presetChipTextActive,
+                      dailyLimitMinutes === null && styles.presetChipTextActive,
                     ]}
                   >
-                    {m}m
+                    No cap
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.presetDesc}>
-              App will be blocked after {limitMinutes} minutes of daily use
-            </Text>
-          </View>
-
-          {/* Cooldown Picker */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Cooldown period</Text>
-            <View style={styles.presetRow}>
-              {presetCooldowns.map((m) => (
-                <TouchableOpacity
-                  key={m}
-                  style={[
-                    styles.presetChip,
-                    cooldownMinutes === m && styles.presetChipActive,
-                  ]}
-                  onPress={() => setCooldownMinutes(m)}
+              </View>
+              <Text style={styles.presetDesc}>
+                {dailyLimitMinutes === null
+                  ? 'No total for the day: only the session limit applies'
+                  : `After ${dailyLimitMinutes} minutes in a day the app stays closed until midnight`}
+              </Text>
+              {error !== null && (
+                <Text
+                  style={styles.limitError}
+                  accessibilityRole="alert"
+                  accessibilityLiveRegion="polite"
                 >
-                  <Text
-                    style={[
-                      styles.presetChipText,
-                      cooldownMinutes === m && styles.presetChipTextActive,
-                    ]}
-                  >
-                    {m}m
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                  {error}
+                </Text>
+              )}
             </View>
-            <Text style={styles.presetDesc}>
-              Wait {cooldownMinutes} minutes before you can reopen the app
-            </Text>
-          </View>
+          </ScrollView>
 
           {/* Buttons */}
           <View style={styles.configButtons}>
@@ -117,9 +188,9 @@ export default function AddAppScreen() {
               <Text style={styles.backBtnText}>← Back</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+              style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
               onPress={handleSave}
-              disabled={saving}
+              disabled={!canSave}
             >
               <Text style={styles.saveBtnText}>
                 {saving ? 'Saving...' : 'Save'}
@@ -345,6 +416,12 @@ const styles = StyleSheet.create({
   },
   presetChipTextActive: {
     color: '#FF4757',
+  },
+  limitError: {
+    color: Colors.error,
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 18,
   },
   presetDesc: {
     color: '#444',

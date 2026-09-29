@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlockedApp } from '../../core/types/domain.types';
+import { describeLimits } from '../../domain/limits';
 import { Colors } from '../../shared/theme/colors';
 import { useHomeViewModel } from './use-home-view-model';
 
@@ -47,9 +48,7 @@ export default function HomeScreen() {
         )}
         <View style={styles.appInfo}>
           <Text style={styles.appName}>{item.appName}</Text>
-          <Text style={styles.appMeta}>
-            {item.limitMinutes} min limit · {item.cooldownMinutes} min cooldown
-          </Text>
+          <Text style={styles.appMeta}>{describeLimits(item)}</Text>
         </View>
       </View>
       <View style={styles.cardRight}>

@@ -50,6 +50,24 @@ describe('MonitorAdapter', () => {
     ]);
   });
 
+  it('sends the daily budget when the rule has one', async () => {
+    await MonitorAdapter.syncBlockedApps([
+      { ...instagram, dailyLimitMinutes: 60 },
+    ]);
+
+    expect(sentJson(native.syncBlockedApps)).toEqual([
+      expect.objectContaining({ dailyLimitMinutes: 60 }),
+    ]);
+  });
+
+  it('leaves the daily budget out for a rule that has none', async () => {
+    await MonitorAdapter.syncBlockedApps([instagram]);
+
+    expect(
+      (sentJson(native.syncBlockedApps) as object[])[0],
+    ).not.toHaveProperty('dailyLimitMinutes');
+  });
+
   it('syncs an empty rule list as an empty JSON list', async () => {
     await MonitorAdapter.syncBlockedApps([]);
 

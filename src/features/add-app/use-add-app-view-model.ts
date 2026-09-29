@@ -4,12 +4,19 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useCases } from '../../app/di';
 import { RootStackParamList } from '../../app/navigation/types';
+import {
+  DEFAULT_COOLDOWN_MINUTES,
+  DEFAULT_DAILY_LIMIT_MINUTES,
+  DEFAULT_LIMIT_MINUTES,
+} from '../../core/constants/app.constants';
 import { AppInfo, BlockedApp } from '../../core/types/domain.types';
+import { validateLimits } from '../../domain/limits';
 
 type NavProp = StackNavigationProp<RootStackParamList>;
 
 const PRESET_LIMITS = [5, 10, 15, 20, 30, 45, 60];
 const PRESET_COOLDOWNS = [5, 10, 15, 30];
+const PRESET_DAILY_LIMITS = [15, 30, 60, 90, 120, 180];
 
 export function useAddAppViewModel() {
   const navigation = useNavigation<NavProp>();
@@ -17,8 +24,13 @@ export function useAddAppViewModel() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null);
-  const [limitMinutes, setLimitMinutes] = useState(10);
-  const [cooldownMinutes, setCooldownMinutes] = useState(10);
+  const [limitMinutes, setLimitMinutes] = useState(DEFAULT_LIMIT_MINUTES);
+  const [cooldownMinutes, setCooldownMinutes] = useState(
+    DEFAULT_COOLDOWN_MINUTES,
+  );
+  const [dailyLimitMinutes, setDailyLimitMinutes] = useState<number | null>(
+    DEFAULT_DAILY_LIMIT_MINUTES,
+  );
   const [saving, setSaving] = useState(false);
 
   const loadApps = useCallback(async () => {
@@ -43,8 +55,13 @@ export function useAddAppViewModel() {
       : apps;
   }, [apps, search]);
 
+  const error = useMemo(
+    () => validateLimits({ limitMinutes, cooldownMinutes, dailyLimitMinutes }),
+    [limitMinutes, cooldownMinutes, dailyLimitMinutes],
+  );
+
   const handleSave = useCallback(async () => {
-    if (!selectedApp) {
+    if (!selectedApp || error !== null) {
       return;
     }
 
@@ -56,6 +73,7 @@ export function useAddAppViewModel() {
         appName: selectedApp.appName,
         limitMinutes,
         cooldownMinutes,
+        dailyLimitMinutes: dailyLimitMinutes ?? undefined,
         isActive: true,
         iconBase64: selectedApp.iconBase64,
       };
@@ -67,7 +85,14 @@ export function useAddAppViewModel() {
     } finally {
       setSaving(false);
     }
-  }, [cooldownMinutes, limitMinutes, navigation, selectedApp]);
+  }, [
+    cooldownMinutes,
+    dailyLimitMinutes,
+    error,
+    limitMinutes,
+    navigation,
+    selectedApp,
+  ]);
 
   return {
     apps,
@@ -81,11 +106,16 @@ export function useAddAppViewModel() {
     setLimitMinutes,
     cooldownMinutes,
     setCooldownMinutes,
+    dailyLimitMinutes,
+    setDailyLimitMinutes,
+    error,
+    canSave: error === null && !saving,
     saving,
     handleSave,
     handleBack: () => setSelectedApp(null),
     handleSelectApp: setSelectedApp,
     presetLimits: PRESET_LIMITS,
     presetCooldowns: PRESET_COOLDOWNS,
+    presetDailyLimits: PRESET_DAILY_LIMITS,
   };
 }

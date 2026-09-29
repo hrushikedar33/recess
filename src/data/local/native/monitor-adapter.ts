@@ -14,6 +14,8 @@ const toBlockedAppPayload = (app: BlockedApp): BlockedAppSyncPayload => ({
   appName: app.appName,
   limitMinutes: app.limitMinutes,
   cooldownMinutes: app.cooldownMinutes,
+  // Omitted from the JSON when a rule has no daily budget (undefined is not serialized).
+  dailyLimitMinutes: app.dailyLimitMinutes,
   isActive: app.isActive,
 });
 
