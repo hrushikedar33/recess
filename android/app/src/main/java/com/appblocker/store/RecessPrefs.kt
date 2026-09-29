@@ -32,6 +32,7 @@ class RecessPrefs(
     fun saveBlockedApps(json: String) {
         val apps = ConfigCodec.parseBlockedApps(json)
         store.putString(KEY_BLOCKED_APPS, ConfigCodec.encodeBlockedApps(apps))
+        advanceConfigVersion()
     }
 
     fun goals(): List<GoalConfig> = readOrEmpty(KEY_GOALS, ConfigCodec::parseGoals)
@@ -40,7 +41,14 @@ class RecessPrefs(
     fun saveGoals(json: String) {
         val goals = ConfigCodec.parseGoals(json)
         store.putString(KEY_GOALS, ConfigCodec.encodeGoals(goals))
+        advanceConfigVersion()
     }
+
+    /**
+     * Advances whenever rules or goals are saved, so the monitor can notice a change with one
+     * cheap read instead of re-parsing the config on every tick.
+     */
+    fun configVersion(): Long = store.getLong(KEY_CONFIG_VERSION) ?: 0L
 
     fun engineState(): EngineState = EngineStateCodec.decode(store.getString(KEY_ENGINE_STATE))
 
@@ -63,6 +71,8 @@ class RecessPrefs(
     fun status(): MonitorStatus =
         MonitorStatus(isMonitoringEnabled(), isRunning(), lastHeartbeatAt(), lastStopReason())
 
+    private fun advanceConfigVersion() = store.putLong(KEY_CONFIG_VERSION, configVersion() + 1)
+
     /** Stored config was validated when saved; if it is unreadable anyway, behave as if unset. */
     private fun <T> readOrEmpty(key: String, parse: (String) -> List<T>): List<T> {
         val stored = store.getString(key) ?: return emptyList()
@@ -80,6 +90,7 @@ class RecessPrefs(
         private const val KEY_ENABLED = "monitoringEnabled"
         private const val KEY_BLOCKED_APPS = "blockedAppsJson"
         private const val KEY_GOALS = "goalsJson"
+        private const val KEY_CONFIG_VERSION = "configVersion"
         private const val KEY_ENGINE_STATE = "engineStateJson"
         private const val KEY_HEARTBEAT = "lastHeartbeatAt"
         private const val KEY_STOP_REASON = "lastStopReason"

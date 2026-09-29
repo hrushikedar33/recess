@@ -185,4 +185,45 @@ class RecessPrefsTest {
 
         assertEquals(MonitorStatus(true, true, T0, "destroyed"), prefs.status())
     }
+
+    // ---- change detection for the monitor --------------------------------------------------
+
+    @Test
+    fun `the config version starts at zero`() {
+        assertEquals(0L, prefs.configVersion())
+    }
+
+    @Test
+    fun `saving rules or goals advances the config version`() {
+        prefs.saveBlockedApps(ONE_APP)
+        assertEquals(1L, prefs.configVersion())
+
+        prefs.saveGoals(ONE_GOAL)
+        assertEquals(2L, prefs.configVersion())
+    }
+
+    @Test
+    fun `the config version survives a restart`() {
+        prefs.saveBlockedApps(ONE_APP)
+
+        assertEquals(1L, restarted().configVersion())
+    }
+
+    @Test
+    fun `a rejected payload does not advance the config version`() {
+        prefs.saveBlockedApps(ONE_APP)
+
+        assertThrows(ConfigFormatException::class.java) { prefs.saveBlockedApps("not json") }
+        assertThrows(ConfigFormatException::class.java) { prefs.saveGoals("not json") }
+
+        assertEquals(1L, prefs.configVersion())
+    }
+
+    @Test
+    fun `turning monitoring on or off does not advance the config version`() {
+        prefs.setMonitoringEnabled(true)
+        prefs.setMonitoringEnabled(false)
+
+        assertEquals(0L, prefs.configVersion())
+    }
 }
