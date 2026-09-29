@@ -16,16 +16,25 @@ const isGoal = (value: unknown): value is Goal => {
 };
 
 export const GoalsStorage = {
-  /** Unreadable data is treated as "no goals"; entries that are not goals are dropped. */
-  getGoals: async (): Promise<Goal[]> => {
+  /**
+   * The stored goals (entries that are not goals are dropped), an empty list when nothing was ever
+   * stored, or null when what is stored cannot be read at all.
+   */
+  readGoals: async (): Promise<Goal[] | null> => {
     try {
       const raw = await AsyncStorageAdapter.getItem(GOALS_STORAGE_KEY);
-      const parsed: unknown = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.filter(isGoal) : [];
+      if (raw === null) {
+        return [];
+      }
+      const parsed: unknown = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(isGoal) : null;
     } catch {
-      return [];
+      return null;
     }
   },
+
+  /** For display and editing: unreadable storage shows as no goals. */
+  getGoals: async (): Promise<Goal[]> => (await GoalsStorage.readGoals()) ?? [],
 
   saveGoals: async (goals: Goal[]): Promise<void> => {
     await AsyncStorageAdapter.setItem(GOALS_STORAGE_KEY, JSON.stringify(goals));

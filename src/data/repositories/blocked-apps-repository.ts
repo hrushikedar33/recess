@@ -40,7 +40,15 @@ export class BlockedAppsRepository implements IBlockedAppsRepository {
   }
 
   async syncToNative(): Promise<void> {
-    await this.pushToNative(await BlockedAppsStorage.getBlockedApps());
+    const apps = await BlockedAppsStorage.readBlockedApps();
+    if (apps === null) {
+      // Unreadable is not "no apps": pushing an empty list would silently switch enforcement off.
+      logger.warn(
+        '[BlockedAppsRepository] Stored apps are unreadable; leaving native as it is',
+      );
+      return;
+    }
+    await this.pushToNative(apps);
   }
 
   private async save(apps: BlockedApp[]): Promise<void> {

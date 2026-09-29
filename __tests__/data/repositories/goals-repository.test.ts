@@ -124,4 +124,20 @@ describe('GoalsRepository', () => {
 
     await expect(repository.syncToNative()).resolves.toBeUndefined();
   });
+
+  it('does not push anything when the stored goals are corrupt, so native keeps the ones it has', async () => {
+    await AsyncStorage.setItem(GOALS_STORAGE_KEY, '{corrupt');
+
+    await repository.syncToNative();
+
+    expect(native.syncGoals).not.toHaveBeenCalled();
+  });
+
+  it('does not push anything when reading storage fails outright', async () => {
+    jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('io'));
+
+    await repository.syncToNative();
+
+    expect(native.syncGoals).not.toHaveBeenCalled();
+  });
 });

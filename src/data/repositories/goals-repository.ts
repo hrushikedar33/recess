@@ -16,7 +16,15 @@ export class GoalsRepository implements IGoalsRepository {
   }
 
   async syncToNative(): Promise<void> {
-    await this.pushToNative(await GoalsStorage.getGoals());
+    const goals = await GoalsStorage.readGoals();
+    if (goals === null) {
+      // Unreadable is not "no goals": leave the ones native already has.
+      logger.warn(
+        '[GoalsRepository] Stored goals are unreadable; leaving native as it is',
+      );
+      return;
+    }
+    await this.pushToNative(goals);
   }
 
   /**

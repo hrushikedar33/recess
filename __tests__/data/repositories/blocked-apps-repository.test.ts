@@ -146,3 +146,53 @@ describe('BlockedAppsRepository native mirror', () => {
     await expect(repository.syncToNative()).resolves.toBeUndefined();
   });
 });
+
+describe('BlockedAppsRepository: an unreadable store must not wipe native', () => {
+  let repository: BlockedAppsRepository;
+
+  beforeEach(async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await AsyncStorage.clear();
+    repository = new BlockedAppsRepository();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('does not push anything when the stored apps are corrupt', async () => {
+    await AsyncStorage.setItem(BLOCKED_APPS_STORAGE_KEY, '{corrupt');
+
+    await repository.syncToNative();
+
+    expect(native.syncBlockedApps).not.toHaveBeenCalled();
+  });
+
+  it('does not push anything when the stored data is not a list', async () => {
+    await AsyncStorage.setItem(BLOCKED_APPS_STORAGE_KEY, '{"apps":[]}');
+
+    await repository.syncToNative();
+
+    expect(native.syncBlockedApps).not.toHaveBeenCalled();
+  });
+
+  it('does not push anything when reading storage fails outright', async () => {
+    jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('io'));
+
+    await repository.syncToNative();
+
+    expect(native.syncBlockedApps).not.toHaveBeenCalled();
+  });
+
+  it('still shows an empty list in the app when the stored apps are corrupt', async () => {
+    await AsyncStorage.setItem(BLOCKED_APPS_STORAGE_KEY, '{corrupt');
+
+    await expect(repository.getBlockedApps()).resolves.toEqual([]);
+  });
+
+  it('does push an empty list when there is genuinely nothing stored', async () => {
+    await repository.syncToNative();
+
+    expect(native.syncBlockedApps).toHaveBeenCalledTimes(1);
+  });
+});
