@@ -103,9 +103,7 @@ export default function HomeScreen() {
           style={styles.permBanner}
           onPress={handleRequestPermission}
         >
-          <Text style={styles.permBannerText}>
-            {permissionBannerText}
-          </Text>
+          <Text style={styles.permBannerText}>{permissionBannerText}</Text>
         </TouchableOpacity>
       )}
 

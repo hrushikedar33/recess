@@ -87,7 +87,9 @@ const trackingTask = async (taskData?: TrackingTaskData) => {
               UsageStatsAdapter.bringAppToForeground();
               UsageStatsAdapter.showLimitNotification(
                 'Recess - Cooldown Active',
-                `${blockedApp.appName} is paused for ${Math.ceil(remainingSec / 60)} more min`,
+                `${blockedApp.appName} is paused for ${Math.ceil(
+                  remainingSec / 60,
+                )} more min`,
               );
 
               DeviceEventEmitter.emit('APP_LIMIT_REACHED', {
@@ -171,7 +173,7 @@ const BACKGROUND_OPTIONS = {
   taskTitle: 'Recess is active',
   taskDesc: 'Monitoring your screen time...',
   taskIcon: { name: 'ic_notification', type: 'drawable' },
-  foregroundServiceType: ['dataSync'] as ('dataSync')[],
+  foregroundServiceType: ['dataSync'] as 'dataSync'[],
   color: '#FF4757',
   linkingURI: 'recess://home',
   parameters: { delay: CHECK_INTERVAL_MS },

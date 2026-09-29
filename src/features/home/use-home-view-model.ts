@@ -18,7 +18,8 @@ export function useHomeViewModel() {
   const [trackerRunning, setTrackerRunning] = useState(false);
   const [hasUsagePermission, setHasUsagePermission] = useState(false);
   const [hasOverlayPermission, setHasOverlayPermission] = useState(false);
-  const [hasBatteryOptimizationIgnored, setHasBatteryOptimizationIgnored] = useState(true);
+  const [hasBatteryOptimizationIgnored, setHasBatteryOptimizationIgnored] =
+    useState(true);
   const [trackerBusy, setTrackerBusy] = useState(false);
 
   const loadApps = useCallback(async () => {
@@ -132,7 +133,10 @@ export function useHomeViewModel() {
                 await UsageTracker.start();
                 setTrackerRunning(true);
               } catch {
-                Alert.alert('Tracker Error', 'Could not start background tracker.');
+                Alert.alert(
+                  'Tracker Error',
+                  'Could not start background tracker.',
+                );
               } finally {
                 setTrackerBusy(false);
               }
@@ -165,7 +169,12 @@ export function useHomeViewModel() {
     } finally {
       setTrackerBusy(false);
     }
-  }, [hasUsagePermission, hasOverlayPermission, hasBatteryOptimizationIgnored, trackerBusy]);
+  }, [
+    hasUsagePermission,
+    hasOverlayPermission,
+    hasBatteryOptimizationIgnored,
+    trackerBusy,
+  ]);
 
   const handleToggleApp = useCallback(async (packageName: string) => {
     try {
@@ -207,7 +216,12 @@ export function useHomeViewModel() {
     setTimeout(() => {
       checkPermissions();
     }, 2000);
-  }, [hasUsagePermission, hasOverlayPermission, hasBatteryOptimizationIgnored, checkPermissions]);
+  }, [
+    hasUsagePermission,
+    hasOverlayPermission,
+    hasBatteryOptimizationIgnored,
+    checkPermissions,
+  ]);
 
   const handleAddApp = useCallback(() => {
     navigation.navigate(Routes.AddApp);
@@ -221,13 +235,18 @@ export function useHomeViewModel() {
 
   const shouldShowPermissionBanner =
     Platform.OS === 'android' &&
-    (!hasUsagePermission || !hasOverlayPermission || !hasBatteryOptimizationIgnored);
+    (!hasUsagePermission ||
+      !hasOverlayPermission ||
+      !hasBatteryOptimizationIgnored);
 
   return {
     blockedApps,
     trackerRunning,
     trackerBusy,
-    hasPermission: hasUsagePermission && hasOverlayPermission && hasBatteryOptimizationIgnored,
+    hasPermission:
+      hasUsagePermission &&
+      hasOverlayPermission &&
+      hasBatteryOptimizationIgnored,
     shouldShowPermissionBanner,
     permissionBannerText,
     handleToggleTracker,
