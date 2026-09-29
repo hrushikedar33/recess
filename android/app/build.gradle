@@ -115,6 +115,9 @@ dependencies {
         implementation jscFlavor
     }
 
+    // Periodic watchdog that revives the monitor if it was killed (best effort; see WatchdogWorker).
+    implementation("androidx.work:work-runtime:2.8.1")
+
     testImplementation("junit:junit:4.13.2")
     // android.jar only stubs org.json in local unit tests; the real artifact makes the codec testable.
     testImplementation("org.json:json:20240303")

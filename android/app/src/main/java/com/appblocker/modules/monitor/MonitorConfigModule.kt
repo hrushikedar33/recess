@@ -1,6 +1,7 @@
 package com.appblocker.modules.monitor
 
 import android.util.Log
+import com.appblocker.service.MonitorRevival
 import com.appblocker.service.MonitorRuntime
 import com.appblocker.service.MonitorServiceController
 import com.appblocker.store.ConfigFormatException
@@ -42,7 +43,13 @@ class MonitorConfigModule(reactContext: ReactApplicationContext) :
         val previous = prefs.isMonitoringEnabled()
         try {
             prefs.setMonitoringEnabled(enabled)
-            if (enabled) MonitorServiceController.start(reactApplicationContext) else MonitorServiceController.stop(reactApplicationContext)
+            if (enabled) {
+                MonitorServiceController.start(reactApplicationContext)
+                MonitorRevival.onMonitoringEnabled(reactApplicationContext)
+            } else {
+                MonitorRevival.onMonitoringDisabled(reactApplicationContext)
+                MonitorServiceController.stop(reactApplicationContext)
+            }
             Log.i(TAG, "Monitoring intent set to $enabled")
             promise.resolve(null)
         } catch (e: Exception) {

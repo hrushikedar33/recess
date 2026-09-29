@@ -73,12 +73,15 @@ class MonitorService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        // We are running: any earlier restart nudge is now moot.
+        RestartScheduler.cancel(this)
         startLoopOnce()
         return START_STICKY
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         prefs.recordStopReason("task_removed")
+        scheduleRestartIfWanted()
         super.onTaskRemoved(rootIntent)
     }
 
@@ -98,7 +101,13 @@ class MonitorService : Service() {
         runCatching { thread?.join(JOIN_TIMEOUT_MS) }
         thread = null
         prefs.recordStopReason(if (prefs.isMonitoringEnabled()) "destroyed_while_enabled" else "stopped_by_user")
+        scheduleRestartIfWanted()
         super.onDestroy()
+    }
+
+    /** Best effort: nudge Android to start us again soon, but only if the user still wants monitoring. */
+    private fun scheduleRestartIfWanted() {
+        if (prefs.isMonitoringEnabled()) RestartScheduler.schedule(this, RESTART_DELAY_MS)
     }
 
     private fun enterForeground(): Boolean =
@@ -213,5 +222,6 @@ class MonitorService : Service() {
     private companion object {
         const val TAG = "Recess"
         const val JOIN_TIMEOUT_MS = 1_000L
+        const val RESTART_DELAY_MS = 60_000L
     }
 }

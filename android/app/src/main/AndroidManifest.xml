@@ -37,6 +37,17 @@
           android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
           android:value="Continuously watches which app is in front so user-set time limits can be enforced" />
       </service>
+      <receiver
+        android:name=".service.BootReceiver"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="android.intent.action.BOOT_COMPLETED" />
+          <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        </intent-filter>
+      </receiver>
+      <receiver
+        android:name=".service.RestartReceiver"
+        android:exported="false" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
