@@ -390,3 +390,128 @@ describe('useHomeViewModel: making problems visible', () => {
     expect(openSettings).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('useHomeViewModel: keeping the health card true over time', () => {
+  const T = 1_700_000_000_000;
+
+  beforeEach(async () => {
+    jest.useFakeTimers({ now: T });
+    monitor.getMonitorStatus.mockReset();
+    monitor.setMonitoringEnabled.mockReset().mockResolvedValue(undefined);
+    await AsyncStorage.clear();
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
+    jest.spyOn(Platform, 'constants', 'get').mockReturnValue({
+      Manufacturer: 'Google',
+    } as never);
+    grantEverything();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  /** A monitor that is healthy and checks in every time it is asked. */
+  const healthyMonitor = () =>
+    monitor.getMonitorStatus.mockImplementation(async () =>
+      status({ enabled: true, running: true, lastHeartbeatAt: Date.now() }),
+    );
+
+  it('does not call a healthy monitor stuck just because time has passed', async () => {
+    healthyMonitor();
+    const { result } = await renderHome();
+    await waitFor(() => expect(result.current.monitorHealth.tone).toBe('ok'));
+
+    await act(async () => {
+      jest.advanceTimersByTime(5 * 60_000);
+    });
+
+    expect(result.current.monitorHealth.tone).toBe('ok');
+    expect(result.current.monitorHealth.details.join(' ')).not.toContain(
+      'not checked in',
+    );
+  });
+
+  it('moves from starting to active without the user doing anything', async () => {
+    monitor.getMonitorStatus
+      .mockResolvedValueOnce(
+        status({ enabled: true, running: false, lastHeartbeatAt: null }),
+      )
+      .mockImplementation(async () =>
+        status({ enabled: true, running: true, lastHeartbeatAt: Date.now() }),
+      );
+    monitor.setMonitoringEnabled.mockResolvedValue(undefined);
+    const { result } = await renderHome();
+
+    await act(async () => {
+      jest.advanceTimersByTime(11_000);
+    });
+
+    await waitFor(() => expect(result.current.monitorHealth.tone).toBe('ok'));
+    expect(result.current.monitorHealth.headline).toBe('Monitoring is active');
+  });
+
+  it('notices when the monitor really stops checking in', async () => {
+    monitor.getMonitorStatus.mockResolvedValue(
+      status({ enabled: true, running: true, lastHeartbeatAt: T }),
+    );
+    const { result } = await renderHome();
+    await waitFor(() => expect(result.current.monitorHealth.tone).toBe('ok'));
+
+    await act(async () => {
+      jest.advanceTimersByTime(5 * 60_000);
+    });
+
+    expect(result.current.monitorHealth.tone).toBe('warning');
+    expect(result.current.monitorHealth.details.join(' ')).toContain('5 min');
+  });
+
+  it('reading the status in the background never restarts or changes anything', async () => {
+    healthyMonitor();
+    const { result } = await renderHome();
+    await waitFor(() => expect(result.current.trackerEnabled).toBe(true));
+    monitor.setMonitoringEnabled.mockClear();
+    // From now on the monitor reports "wanted but not running", where a restart would be tempting.
+    monitor.getMonitorStatus.mockImplementation(async () =>
+      status({ enabled: true, running: false, lastHeartbeatAt: null }),
+    );
+
+    await act(async () => {
+      jest.advanceTimersByTime(60_000);
+      // Let the promise chain behind every background read finish before looking.
+      for (let i = 0; i < 20; i += 1) {
+        await Promise.resolve();
+      }
+    });
+
+    expect(monitor.getMonitorStatus.mock.calls.length).toBeGreaterThan(1);
+    expect(monitor.setMonitoringEnabled).not.toHaveBeenCalled();
+  });
+
+  it('does not keep polling while monitoring is off', async () => {
+    monitor.getMonitorStatus.mockResolvedValue(status({ enabled: false }));
+    await renderHome();
+    const callsAtStart = monitor.getMonitorStatus.mock.calls.length;
+
+    await act(async () => {
+      jest.advanceTimersByTime(60_000);
+    });
+
+    expect(monitor.getMonitorStatus.mock.calls.length).toBe(callsAtStart);
+  });
+
+  it('survives a failed background read and keeps the last known status', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    healthyMonitor();
+    const { result } = await renderHome();
+    await waitFor(() => expect(result.current.monitorHealth.tone).toBe('ok'));
+    monitor.getMonitorStatus.mockRejectedValue(new Error('bridge hiccup'));
+
+    await act(async () => {
+      jest.advanceTimersByTime(30_000);
+    });
+
+    expect(result.current.trackerEnabled).toBe(true);
+  });
+});

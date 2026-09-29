@@ -112,7 +112,17 @@ export function useHomeViewModel() {
     if (!trackerEnabled) {
       return undefined;
     }
-    const timer = setInterval(() => setNow(Date.now()), 10_000);
+    // Re-read the status on the same beat that moves "now" forward. Advancing the clock alone would
+    // make a healthy monitor look stuck after two minutes, because the card would still hold the
+    // last check-in from when it was first read. Reading never restarts or changes anything.
+    const timer = setInterval(() => {
+      setNow(Date.now());
+      UsageTracker.getStatus()
+        .then(setMonitorStatus)
+        .catch((error: unknown) => {
+          logger.warn('[Home] Could not refresh the monitor status', error);
+        });
+    }, 10_000);
     return () => clearInterval(timer);
   }, [trackerEnabled]);
 
