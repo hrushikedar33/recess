@@ -20,6 +20,12 @@ export default function HomeScreen() {
     blockedApps,
     goalsSummary,
     handleOpenGoals,
+    monitorHealth,
+    interruptionNote,
+    oemGuidance,
+    handleDismissInterruption,
+    handleDismissOemGuidance,
+    handleOpenAppSettings,
     trackerEnabled,
     trackerBusy,
     shouldShowPermissionBanner,
@@ -98,6 +104,76 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Monitoring status */}
+      {monitorHealth.tone !== 'off' && (
+        <View
+          style={styles.statusRow}
+          accessible
+          accessibilityLabel={[
+            monitorHealth.headline,
+            ...monitorHealth.details,
+          ].join('. ')}
+        >
+          <View
+            style={[
+              styles.statusDot,
+              monitorHealth.tone === 'ok'
+                ? styles.statusDotOk
+                : styles.statusDotWarning,
+            ]}
+          />
+          <View style={styles.statusText}>
+            <Text style={styles.statusHeadline}>{monitorHealth.headline}</Text>
+            {monitorHealth.details.map((detail) => (
+              <Text key={detail} style={styles.statusDetail}>
+                {detail}
+              </Text>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Interruption note */}
+      {interruptionNote !== null && (
+        <View style={styles.noticeCard}>
+          <Text style={styles.noticeBody}>{interruptionNote}</Text>
+          <TouchableOpacity
+            style={styles.noticeButton}
+            onPress={handleDismissInterruption}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss this note"
+          >
+            <Text style={styles.noticeButtonText}>Got it</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Keep-alive guidance for phones that stop background apps */}
+      {oemGuidance !== null && (
+        <View style={styles.noticeCard}>
+          <Text style={styles.noticeTitle}>{oemGuidance.title}</Text>
+          <Text style={styles.noticeBody}>{oemGuidance.steps}</Text>
+          <View style={styles.noticeButtons}>
+            <TouchableOpacity
+              style={styles.noticeButton}
+              onPress={handleOpenAppSettings}
+              accessibilityRole="button"
+              accessibilityLabel="Open Recess settings"
+            >
+              <Text style={styles.noticeButtonText}>Open settings</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.noticeButton}
+              onPress={handleDismissOemGuidance}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss this guidance"
+            >
+              <Text style={styles.noticeButtonText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Permission Banner */}
       {shouldShowPermissionBanner && (
@@ -223,6 +299,65 @@ const styles = StyleSheet.create({
     color: '#FF8B94',
     fontSize: 13,
     lineHeight: 18,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 24,
+    marginBottom: 12,
+    gap: 10,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 5,
+  },
+  statusDotOk: { backgroundColor: Colors.success },
+  statusDotWarning: { backgroundColor: Colors.accent },
+  statusText: { flex: 1, gap: 2 },
+  statusHeadline: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statusDetail: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  noticeCard: {
+    marginHorizontal: 24,
+    marginBottom: 12,
+    backgroundColor: Colors.surface,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    gap: 8,
+  },
+  noticeTitle: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  noticeBody: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  noticeButtons: { flexDirection: 'row', gap: 8 },
+  noticeButton: {
+    minHeight: 44,
+    minWidth: 44,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  noticeButtonText: {
+    color: Colors.accent,
+    fontSize: 14,
+    fontWeight: '700',
   },
   goalsCard: {
     marginHorizontal: 24,

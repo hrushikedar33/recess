@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useCases } from '../../app/di';
@@ -11,7 +11,11 @@ import { useAppState } from '../../core/hooks/use-app-state';
 import { logger } from '../../core/utils/logger';
 import UsageTracker from '../../services/tracker/usage-tracker-service';
 import { AppListAdapter } from '../../data/local/native/app-list-adapter';
+import { NoticeState } from '../../data/repositories/notices-repository';
 import { summarizeGoals } from '../goals/goals-summary';
+import { describeMonitorHealth } from './monitor-health';
+import { oemGuidance } from './oem-guidance';
+import { describeStopReason } from './stop-reason';
 
 type NavProp = StackNavigationProp<RootStackParamList>;
 
@@ -22,6 +26,11 @@ export function useHomeViewModel() {
   const [monitorStatus, setMonitorStatus] = useState<MonitorStatus | null>(
     null,
   );
+  const [notices, setNotices] = useState<NoticeState>({
+    ackedStopReason: null,
+    oemGuidanceDismissed: false,
+  });
+  const [now, setNow] = useState(() => Date.now());
   const appState = useAppState();
   const [hasUsagePermission, setHasUsagePermission] = useState(false);
   const [hasOverlayPermission, setHasOverlayPermission] = useState(false);
@@ -65,6 +74,8 @@ export function useHomeViewModel() {
     try {
       const status = await UsageTracker.getStatus();
       setMonitorStatus(await UsageTracker.resumeIfInterrupted(status));
+      setNotices(await useCases.notices.getState());
+      setNow(Date.now());
     } catch (error) {
       logger.warn('[Home] Could not read the monitor status', error);
     }
@@ -96,6 +107,45 @@ export function useHomeViewModel() {
   }, [appState, refreshMonitorStatus]);
 
   const trackerEnabled = monitorStatus?.enabled ?? false;
+
+  useEffect(() => {
+    if (!trackerEnabled) {
+      return undefined;
+    }
+    const timer = setInterval(() => setNow(Date.now()), 10_000);
+    return () => clearInterval(timer);
+  }, [trackerEnabled]);
+
+  const stopReason = monitorStatus?.lastStopReason ?? null;
+  const interruptionNote =
+    trackerEnabled && stopReason !== notices.ackedStopReason
+      ? describeStopReason(stopReason)
+      : null;
+
+  const guidance =
+    trackerEnabled && Platform.OS === 'android' && !notices.oemGuidanceDismissed
+      ? oemGuidance(
+          (Platform.constants as { Manufacturer?: string } | undefined)
+            ?.Manufacturer,
+        )
+      : null;
+
+  const handleDismissInterruption = useCallback(async () => {
+    if (stopReason === null) {
+      return;
+    }
+    await useCases.notices.acknowledgeStopReason(stopReason);
+    setNotices((previous) => ({ ...previous, ackedStopReason: stopReason }));
+  }, [stopReason]);
+
+  const handleDismissOemGuidance = useCallback(async () => {
+    await useCases.notices.dismissOemGuidance();
+    setNotices((previous) => ({ ...previous, oemGuidanceDismissed: true }));
+  }, []);
+
+  const handleOpenAppSettings = useCallback(() => {
+    Linking.openSettings();
+  }, []);
 
   const enableTracker = useCallback(async () => {
     setTrackerBusy(true);
@@ -266,6 +316,12 @@ export function useHomeViewModel() {
     goalsSummary: summarizeGoals(goals),
     handleOpenGoals,
     trackerEnabled,
+    monitorHealth: describeMonitorHealth(monitorStatus, now),
+    interruptionNote,
+    oemGuidance: guidance,
+    handleDismissInterruption,
+    handleDismissOemGuidance,
+    handleOpenAppSettings,
     trackerBusy,
     hasPermission:
       hasUsagePermission &&

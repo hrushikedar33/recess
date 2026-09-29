@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import {
   Alert,
+  Linking,
   NativeModules,
   PermissionsAndroid,
   Platform,
@@ -216,5 +217,176 @@ describe('useHomeViewModel: the monitoring toggle', () => {
 
     expect(alert).toHaveBeenCalledWith('Tracker Error', expect.any(String));
     expect(result.current.trackerEnabled).toBe(false);
+  });
+});
+
+describe('useHomeViewModel: making problems visible', () => {
+  beforeEach(async () => {
+    monitor.getMonitorStatus.mockReset().mockResolvedValue(status());
+    monitor.setMonitoringEnabled.mockReset().mockResolvedValue(undefined);
+    await AsyncStorage.clear();
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
+    jest.spyOn(Platform, 'constants', 'get').mockReturnValue({
+      Manufacturer: 'Google',
+    } as never);
+    grantEverything();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const running = (overrides: Partial<MonitorStatus> = {}) =>
+    monitor.getMonitorStatus.mockResolvedValue(
+      status({ enabled: true, running: true, ...overrides }),
+    );
+
+  it('explains an interruption once the app is opened again', async () => {
+    running({ lastStopReason: 'destroyed_while_enabled' });
+
+    const { result } = await renderHome();
+
+    await waitFor(() =>
+      expect(result.current.interruptionNote).toContain(
+        'Android stopped Recess',
+      ),
+    );
+  });
+
+  it('does not explain a stop the user asked for', async () => {
+    running({ lastStopReason: 'stopped_by_user' });
+
+    const { result } = await renderHome();
+
+    await waitFor(() => expect(result.current.trackerEnabled).toBe(true));
+    expect(result.current.interruptionNote).toBeNull();
+  });
+
+  it('does not explain an old stop while monitoring is off', async () => {
+    monitor.getMonitorStatus.mockResolvedValue(
+      status({ enabled: false, lastStopReason: 'task_removed' }),
+    );
+
+    const { result } = await renderHome();
+
+    expect(result.current.interruptionNote).toBeNull();
+  });
+
+  it('remembers that the note was dismissed, so it does not come back', async () => {
+    running({ lastStopReason: 'task_removed' });
+    const first = await renderHome();
+    await waitFor(() =>
+      expect(first.result.current.interruptionNote).not.toBeNull(),
+    );
+
+    await act(async () => {
+      await first.result.current.handleDismissInterruption();
+    });
+    expect(first.result.current.interruptionNote).toBeNull();
+    first.unmount();
+
+    const second = await renderHome();
+    await waitFor(() =>
+      expect(second.result.current.trackerEnabled).toBe(true),
+    );
+    expect(second.result.current.interruptionNote).toBeNull();
+  });
+
+  it('shows a new interruption even after an earlier one was dismissed', async () => {
+    running({ lastStopReason: 'task_removed' });
+    const first = await renderHome();
+    await waitFor(() =>
+      expect(first.result.current.interruptionNote).not.toBeNull(),
+    );
+    await act(async () => {
+      await first.result.current.handleDismissInterruption();
+    });
+    first.unmount();
+
+    running({ lastStopReason: 'destroyed_while_enabled' });
+    const second = await renderHome();
+
+    await waitFor(() =>
+      expect(second.result.current.interruptionNote).not.toBeNull(),
+    );
+  });
+
+  it("turns the monitor's health report into a warning the user can read", async () => {
+    running({ health: ['OVERLAY_MISSING'] });
+
+    const { result } = await renderHome();
+
+    await waitFor(() =>
+      expect(result.current.monitorHealth.tone).toBe('warning'),
+    );
+    expect(result.current.monitorHealth.details[0]).toContain(
+      'Display over other apps',
+    );
+  });
+
+  it('shows the battery guidance on a phone from a maker that needs it', async () => {
+    jest.spyOn(Platform, 'constants', 'get').mockReturnValue({
+      Manufacturer: 'OnePlus',
+    } as never);
+    running();
+
+    const { result } = await renderHome();
+
+    await waitFor(() => expect(result.current.oemGuidance).not.toBeNull());
+    expect(result.current.oemGuidance?.steps).toMatch(/battery/i);
+  });
+
+  it('shows no guidance while monitoring is off, even on a phone that needs it', async () => {
+    jest.spyOn(Platform, 'constants', 'get').mockReturnValue({
+      Manufacturer: 'OnePlus',
+    } as never);
+
+    const { result } = await renderHome();
+
+    expect(result.current.trackerEnabled).toBe(false);
+    expect(result.current.oemGuidance).toBeNull();
+  });
+
+  it('shows no guidance on a phone that does not need it', async () => {
+    running();
+
+    const { result } = await renderHome();
+
+    await waitFor(() => expect(result.current.trackerEnabled).toBe(true));
+    expect(result.current.oemGuidance).toBeNull();
+  });
+
+  it('remembers that the guidance was dismissed', async () => {
+    jest.spyOn(Platform, 'constants', 'get').mockReturnValue({
+      Manufacturer: 'OnePlus',
+    } as never);
+    running();
+    const first = await renderHome();
+    await waitFor(() =>
+      expect(first.result.current.oemGuidance).not.toBeNull(),
+    );
+
+    await act(async () => {
+      await first.result.current.handleDismissOemGuidance();
+    });
+    first.unmount();
+
+    const second = await renderHome();
+    await waitFor(() =>
+      expect(second.result.current.trackerEnabled).toBe(true),
+    );
+    expect(second.result.current.oemGuidance).toBeNull();
+  });
+
+  it("opens the app's own settings page for the guidance", async () => {
+    const openSettings = jest
+      .spyOn(Linking, 'openSettings')
+      .mockResolvedValue(undefined);
+    const { result } = await renderHome();
+
+    act(() => result.current.handleOpenAppSettings());
+
+    expect(openSettings).toHaveBeenCalledTimes(1);
   });
 });
