@@ -3,6 +3,7 @@ package com.appblocker.service
 import com.appblocker.engine.DayClock
 import com.appblocker.engine.EngineAction
 import com.appblocker.engine.EnforcementEngine
+import com.appblocker.store.HealthIssue
 import com.appblocker.store.InMemoryKeyValueStore
 import com.appblocker.store.KeyValueStore
 import com.appblocker.store.RecessPrefs
@@ -73,6 +74,7 @@ class MonitorTickerTest {
     private var screenOn = true
     private var pollFailure: Exception? = null
     private var polls = 0
+    private var probeIssues = emptySet<HealthIssue>()
     private val errors = mutableListOf<String>()
 
     private fun newTicker() =
@@ -85,6 +87,9 @@ class MonitorTickerTest {
                 foreground
             },
             isScreenOn = { screenOn },
+            healthProbe = object : HealthProbe {
+                override fun issues() = probeIssues
+            },
             sink = sink,
             clock = { now },
             onError = { message, _ -> errors += message },
@@ -205,13 +210,13 @@ class MonitorTickerTest {
     }
 
     @Test
-    fun `ten more seconds in the blocked app eject every tick but never report again`() {
+    fun `ten more seconds in the blocked app keep ejecting at the throttled pace but never report again`() {
         enableWithInstagramRule()
         run(61)
 
         run(10)
 
-        assertEquals(11, sink.ejected.size)
+        assertEquals(6, sink.ejected.size)
         assertEquals(1, sink.limits.size)
     }
 
@@ -258,7 +263,7 @@ class MonitorTickerTest {
         run(3, using = restarted)
 
         assertEquals(1, sink.limits.size)
-        assertEquals(4, sink.ejected.size)
+        assertEquals(3, sink.ejected.size)
     }
 
     // ---- when things go wrong --------------------------------------------------------------
@@ -297,5 +302,134 @@ class MonitorTickerTest {
 
         assertTrue(sink.ejected.isEmpty())
         assertNull(prefs.engineState().apps[INSTAGRAM])
+    }
+
+    // ---- surviving anything ----------------------------------------------------------------
+
+    @Test
+    fun `nothing that goes wrong inside a tick can escape it`() {
+        enableWithInstagramRule()
+        val brokenStore = object : KeyValueStore by InMemoryKeyValueStore() {
+            override fun getBoolean(key: String, default: Boolean): Boolean = throw IllegalStateException("prefs broke")
+        }
+        val broken =
+            MonitorTicker(
+                prefs = RecessPrefs(brokenStore) { now },
+                engine = EnforcementEngine(FakeDayClock()),
+                pollForeground = { foreground },
+                isScreenOn = { true },
+                healthProbe = object : HealthProbe {
+                    override fun issues() = emptySet<HealthIssue>()
+                },
+                sink = sink,
+                clock = { now },
+                onError = { message, _ -> errors += message },
+            )
+
+        val outcome = broken.tick()
+
+        assertFalse(outcome.stop)
+        assertEquals(MonitorTicker.ERROR_BACKOFF_MS, outcome.nextDelayMs)
+        assertTrue(errors.isNotEmpty())
+    }
+
+    @Test
+    fun `an intent that was never written keeps the monitor running instead of stopping it`() {
+        // Nothing ever wrote the intent: "off" here may just mean unreadable storage.
+        assertFalse(ticker.tick().stop)
+    }
+
+    @Test
+    fun `an unreadable intent is reported as a health issue`() {
+        ticker.tick()
+
+        assertTrue(HealthIssue.INTENT_UNKNOWN in prefs.healthIssues())
+    }
+
+    // ---- health ----------------------------------------------------------------------------
+
+    @Test
+    fun `problems found by the probe are recorded on the first tick`() {
+        enableWithInstagramRule()
+        probeIssues = setOf(HealthIssue.OVERLAY_MISSING)
+
+        ticker.tick()
+
+        assertEquals(setOf(HealthIssue.OVERLAY_MISSING), prefs.healthIssues())
+    }
+
+    @Test
+    fun `the probe is only asked again after thirty seconds`() {
+        enableWithInstagramRule()
+        ticker.tick()
+        probeIssues = setOf(HealthIssue.USAGE_ACCESS_MISSING)
+
+        now = T0 + 10 * SECOND
+        ticker.tick()
+        assertTrue(prefs.healthIssues().isEmpty())
+
+        now = T0 + 30 * SECOND
+        ticker.tick()
+        assertEquals(setOf(HealthIssue.USAGE_ACCESS_MISSING), prefs.healthIssues())
+    }
+
+    @Test
+    fun `an issue that is fixed is cleared`() {
+        enableWithInstagramRule()
+        probeIssues = setOf(HealthIssue.OVERLAY_MISSING)
+        ticker.tick()
+
+        probeIssues = emptySet()
+        now = T0 + 31 * SECOND
+        ticker.tick()
+
+        assertTrue(prefs.healthIssues().isEmpty())
+    }
+
+    @Test
+    fun `a failing foreground poll is reported and clears once it works again`() {
+        enableWithInstagramRule()
+        pollFailure = SecurityException("usage access revoked")
+        ticker.tick()
+        assertTrue(HealthIssue.POLL_FAILING in prefs.healthIssues())
+
+        pollFailure = null
+        now += SECOND
+        ticker.tick()
+
+        assertFalse(HealthIssue.POLL_FAILING in prefs.healthIssues())
+    }
+
+    @Test
+    fun `rules that cannot be read are reported instead of silently meaning no rules`() {
+        prefs.setMonitoringEnabled(true)
+        store.putString("blockedAppsJson", "{corrupt")
+        prefs.saveHealthIssues(emptySet())
+
+        ticker.tick()
+
+        assertTrue(HealthIssue.RULES_UNREADABLE in prefs.healthIssues())
+    }
+
+    @Test
+    fun `an eject that keeps not working is reported`() {
+        enableWithInstagramRule()
+        run(61)
+
+        run(15)
+
+        assertTrue(HealthIssue.EJECT_INEFFECTIVE in prefs.healthIssues())
+    }
+
+    @Test
+    fun `the eject warning goes away once the blocked app stops coming back`() {
+        enableWithInstagramRule()
+        run(61)
+        run(15)
+        foreground = null
+
+        run(40)
+
+        assertFalse(HealthIssue.EJECT_INEFFECTIVE in prefs.healthIssues())
     }
 }
