@@ -2,6 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from '../../features/home/home-screen';
 import AddAppScreen from '../../features/add-app/add-app-screen';
+import GoalsScreen from '../../features/goals/goals-screen';
 import BlockOverlayScreen from '../../features/block-overlay/block-overlay-screen';
 import { RootStackParamList } from './types';
 import { Routes } from './routes';
@@ -27,6 +28,11 @@ export default function RootNavigator() {
         name={Routes.AddApp}
         component={AddAppScreen}
         options={{ title: 'Choose App' }}
+      />
+      <Stack.Screen
+        name={Routes.Goals}
+        component={GoalsScreen}
+        options={{ title: 'Goals & To-dos' }}
       />
       <Stack.Screen
         name={Routes.BlockOverlay}

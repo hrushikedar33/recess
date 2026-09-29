@@ -5,16 +5,22 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useCases } from '../../app/di';
 import { Routes } from '../../app/navigation/routes';
 import { RootStackParamList } from '../../app/navigation/types';
-import { BlockedApp, LimitReachedPayload } from '../../core/types/domain.types';
+import {
+  BlockedApp,
+  Goal,
+  LimitReachedPayload,
+} from '../../core/types/domain.types';
 import { useDeviceEventListener } from '../../core/hooks/use-device-event-listener';
 import UsageTracker from '../../services/tracker/usage-tracker-service';
 import { AppListAdapter } from '../../data/local/native/app-list-adapter';
+import { summarizeGoals } from '../goals/goals-summary';
 
 type NavProp = StackNavigationProp<RootStackParamList>;
 
 export function useHomeViewModel() {
   const navigation = useNavigation<NavProp>();
   const [blockedApps, setBlockedApps] = useState<BlockedApp[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [trackerRunning, setTrackerRunning] = useState(false);
   const [hasUsagePermission, setHasUsagePermission] = useState(false);
   const [hasOverlayPermission, setHasOverlayPermission] = useState(false);
@@ -43,6 +49,14 @@ export function useHomeViewModel() {
     setTrackerRunning(UsageTracker.isRunning());
   }, []);
 
+  const loadGoals = useCallback(async () => {
+    try {
+      setGoals(await useCases.getGoals.execute());
+    } catch {
+      // The summary card just stays as it was; goals are managed on their own screen.
+    }
+  }, []);
+
   const checkPermissions = useCallback(async () => {
     const usageGranted = await UsageTracker.checkPermission();
     const overlayGranted = await UsageTracker.checkOverlayPermission();
@@ -55,8 +69,9 @@ export function useHomeViewModel() {
   useFocusEffect(
     useCallback(() => {
       loadApps();
+      loadGoals();
       checkPermissions();
-    }, [loadApps, checkPermissions]),
+    }, [loadApps, loadGoals, checkPermissions]),
   );
 
   useDeviceEventListener<LimitReachedPayload>(
@@ -227,6 +242,10 @@ export function useHomeViewModel() {
     navigation.navigate(Routes.AddApp);
   }, [navigation]);
 
+  const handleOpenGoals = useCallback(() => {
+    navigation.navigate(Routes.Goals);
+  }, [navigation]);
+
   const permissionBannerText = !hasUsagePermission
     ? '⚠️ Grant Usage Access permission to enable tracking'
     : !hasOverlayPermission
@@ -241,6 +260,8 @@ export function useHomeViewModel() {
 
   return {
     blockedApps,
+    goalsSummary: summarizeGoals(goals),
+    handleOpenGoals,
     trackerRunning,
     trackerBusy,
     hasPermission:

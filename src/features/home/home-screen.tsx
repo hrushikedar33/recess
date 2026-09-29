@@ -11,11 +11,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlockedApp } from '../../core/types/domain.types';
+import { Colors } from '../../shared/theme/colors';
 import { useHomeViewModel } from './use-home-view-model';
 
 export default function HomeScreen() {
   const {
     blockedApps,
+    goalsSummary,
+    handleOpenGoals,
     trackerRunning,
     trackerBusy,
     shouldShowPermissionBanner,
@@ -106,6 +109,20 @@ export default function HomeScreen() {
           <Text style={styles.permBannerText}>{permissionBannerText}</Text>
         </TouchableOpacity>
       )}
+
+      {/* Goals */}
+      <TouchableOpacity
+        style={styles.goalsCard}
+        onPress={handleOpenGoals}
+        accessibilityRole="button"
+        accessibilityLabel={`Goals and to-dos. ${goalsSummary.label}`}
+      >
+        <View>
+          <Text style={styles.goalsTitle}>Goals & To-dos</Text>
+          <Text style={styles.goalsMeta}>{goalsSummary.label}</Text>
+        </View>
+        <Text style={styles.goalsChevron}>›</Text>
+      </TouchableOpacity>
 
       {/* App List */}
       {blockedApps.length === 0 ? (
@@ -207,6 +224,34 @@ const styles = StyleSheet.create({
     color: '#FF8B94',
     fontSize: 13,
     lineHeight: 18,
+  },
+  goalsCard: {
+    marginHorizontal: 24,
+    marginBottom: 16,
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  goalsTitle: {
+    color: Colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  goalsMeta: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  goalsChevron: {
+    color: Colors.textSecondary,
+    fontSize: 22,
   },
   list: {
     paddingHorizontal: 24,
