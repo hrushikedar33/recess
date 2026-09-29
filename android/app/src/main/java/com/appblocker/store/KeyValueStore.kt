@@ -23,6 +23,9 @@ interface KeyValueStore {
     fun putBoolean(key: String, value: Boolean): Boolean
 
     fun putLong(key: String, value: Long)
+
+    /** Removes the key synchronously, like [putStringDurable]. False if that could not be saved. */
+    fun removeDurable(key: String): Boolean
 }
 
 class SharedPreferencesStore(private val prefs: SharedPreferences) : KeyValueStore {
@@ -45,4 +48,6 @@ class SharedPreferencesStore(private val prefs: SharedPreferences) : KeyValueSto
     override fun putLong(key: String, value: Long) {
         prefs.edit().putLong(key, value).apply()
     }
+
+    override fun removeDurable(key: String): Boolean = prefs.edit().remove(key).commit()
 }

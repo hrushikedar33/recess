@@ -406,6 +406,103 @@ class RecessPrefsTest {
     }
 
     @Test
+    fun `entries that are not safe quotes are dropped before they are stored`() {
+        prefs.saveExtraQuotes(
+            """[
+              {"text":"Call one eight hundred 555 0100 for a prize.","author":"Someone"},
+              {"text":"A fine quote from the internet.","author":"Someone"},
+              {"text":"Be bold today, my \u202Efriend of old.","author":"Someone"},
+              {"text":"Too many requests. Obtain an auth key for unlimited access.","author":"Marcus Aurelius"}
+            ]""",
+        )
+
+        val stored = store.getString("extraQuotesJson")!!
+        assertEquals(listOf("A fine quote from the internet."), prefs.extraQuotes().map { it.text })
+        assertFalse(stored.contains("555"))
+        assertFalse(stored.contains("requests"))
+        assertFalse(stored.contains("\\u202E") || stored.contains("\u202E"))
+    }
+
+    @Test
+    fun `repeats and anything past 200 are dropped before they are stored`() {
+        val same = """{"text":"The very same words twice.","author":"Someone"}"""
+        prefs.saveExtraQuotes("[$same,$same]")
+        assertEquals(1, prefs.extraQuotes().size)
+
+        val many = (0 until 250).joinToString(",", "[", "]") { """{"text":"Quote ${"x".repeat(1)}${wordFor(it)} is here.","author":"Someone"}""" }
+        prefs.saveExtraQuotes(many)
+        assertEquals(200, prefs.extraQuotes().size)
+    }
+
+    @Test
+    fun `extra quotes are written durably, so a process kill cannot bring back a cleared set`() {
+        prefs.saveExtraQuotes("""[{"text":"A fine quote from the internet.","author":"Someone"}]""")
+
+        assertTrue("extraQuotesJson" in store.durableKeys)
+    }
+
+    @Test
+    fun `a set that could not be written is reported and the earlier set stays`() {
+        prefs.saveExtraQuotes("""[{"text":"Kept extra quote stays.","author":"A"}]""")
+        store.failDurableWrites = true
+
+        assertThrows(IllegalStateException::class.java) {
+            prefs.saveExtraQuotes("""[{"text":"Never written at all.","author":"B"}]""")
+        }
+
+        store.failDurableWrites = false
+        assertEquals(listOf("Kept extra quote stays."), prefs.extraQuotes().map { it.text })
+    }
+
+    @Test
+    fun `clearing the extras also clears the saved limit event, which may hold one of their quotes`() {
+        prefs.saveExtraQuotes("""[{"text":"A fine quote from the internet.","author":"Someone"}]""")
+        prefs.saveLimitEvent("""{"quote":"A fine quote from the internet."}""")
+
+        prefs.saveExtraQuotes("[]")
+
+        assertNull(prefs.lastLimitEventJson())
+        assertNull(restarted().lastLimitEventJson())
+    }
+
+    @Test
+    fun `saving a set that has quotes leaves the saved limit event alone`() {
+        prefs.saveLimitEvent("""{"quote":"Confine yourself to the present."}""")
+
+        prefs.saveExtraQuotes("""[{"text":"A fine quote from the internet.","author":"Someone"}]""")
+
+        assertEquals("""{"quote":"Confine yourself to the present."}""", prefs.lastLimitEventJson())
+    }
+
+    @Test
+    fun `a set that only holds unsafe quotes counts as empty and clears the limit event`() {
+        prefs.saveLimitEvent("""{"quote":"Old online quote."}""")
+
+        prefs.saveExtraQuotes("""[{"text":"Call 555 0100 now for a prize.","author":"Someone"}]""")
+
+        assertNull(prefs.lastLimitEventJson())
+    }
+
+    @Test
+    fun `a failed clear of the limit event is reported`() {
+        prefs.saveLimitEvent("""{"quote":"Old online quote."}""")
+        store.failRemovals = true
+
+        assertThrows(IllegalStateException::class.java) { prefs.saveExtraQuotes("[]") }
+    }
+
+    /** A digit-free unique word for [n], because quotes may not contain digits. */
+    private fun wordFor(n: Int): String {
+        var rest = n
+        val word = StringBuilder()
+        do {
+            word.append('a' + rest % 26)
+            rest /= 26
+        } while (rest > 0)
+        return word.toString()
+    }
+
+    @Test
     fun `corrupt stored extras read as none instead of crashing`() {
         store.putString("extraQuotesJson", "{corrupt")
 

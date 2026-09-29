@@ -4,6 +4,7 @@ import com.appblocker.engine.EngineState
 import com.appblocker.engine.EngineStateCodec
 import com.appblocker.quotes.Quote
 import com.appblocker.quotes.QuoteCodec
+import com.appblocker.quotes.QuotePool
 
 data class MonitorStatus(
     val enabled: Boolean,
@@ -71,7 +72,11 @@ class RecessPrefs(
 
     /**
      * Quotes fetched online (an opt-in feature), replacing the previous set. The payload must be a
-     * JSON list; entries that are not quotes are skipped. They are checked again where they are used.
+     * JSON list. It comes from the internet, so it is checked here, before anything is stored:
+     * entries that are not safe quotes (see [QuotePool]) are dropped, as are repeats and anything
+     * past the cap. The write is durable, so a process kill cannot bring back a set the user just
+     * switched off. An empty result also clears the saved limit event, which may hold one of the
+     * quotes that were just removed.
      */
     fun saveExtraQuotes(json: String?) {
         val payload = json ?: throw ConfigFormatException("quotes: payload is missing")
@@ -82,7 +87,11 @@ class RecessPrefs(
                 throw ConfigFormatException("quotes: not a JSON list")
             }
         if (entries > MAX_EXTRA_QUOTE_ENTRIES) throw ConfigFormatException("quotes: more than $MAX_EXTRA_QUOTE_ENTRIES entries")
-        store.putString(KEY_EXTRA_QUOTES, QuoteCodec.encode(QuoteCodec.parse(payload)))
+        val safe = QuotePool.merge(emptyList(), QuoteCodec.parse(payload))
+        check(store.putStringDurable(KEY_EXTRA_QUOTES, QuoteCodec.encode(safe))) { "Could not persist the extra quotes" }
+        if (safe.isEmpty()) {
+            check(store.removeDurable(KEY_LIMIT_EVENT)) { "Could not clear the saved limit event" }
+        }
     }
 
     fun extraQuotes(): List<Quote> = QuoteCodec.parse(store.getString(KEY_EXTRA_QUOTES))
