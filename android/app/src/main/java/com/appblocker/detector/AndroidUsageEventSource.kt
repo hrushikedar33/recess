@@ -25,10 +25,10 @@ class AndroidUsageEventSource(context: Context) : UsageEventSource {
         val event = UsageEvents.Event()
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
+            // Only resume events decide what is in front; skip allocating a record for the rest.
+            if (event.eventType != UsageEvents.Event.ACTIVITY_RESUMED) continue
             val packageName = event.packageName ?: continue
-            val kind =
-                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) UsageEventKind.RESUMED else UsageEventKind.OTHER
-            records += UsageEventRecord(kind, packageName, event.timeStamp)
+            records += UsageEventRecord(UsageEventKind.RESUMED, packageName, event.timeStamp)
         }
         return records
     }

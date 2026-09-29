@@ -12,12 +12,7 @@ import android.content.Intent
  */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
-        val reason =
-            when (intent?.action) {
-                Intent.ACTION_BOOT_COMPLETED -> "boot"
-                Intent.ACTION_MY_PACKAGE_REPLACED -> "package_replaced"
-                else -> return
-            }
+        val reason = BootActions.reasonFor(intent?.action) ?: return
         MonitorRevival.restartIfNeeded(context, reason)
         WatchdogWorker.ensureScheduledIfEnabled(context)
     }

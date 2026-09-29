@@ -4,6 +4,7 @@ import android.util.Log
 import com.appblocker.service.MonitorRevival
 import com.appblocker.service.MonitorRuntime
 import com.appblocker.service.MonitorServiceController
+import com.appblocker.service.MonitorSwitch
 import com.appblocker.store.ConfigFormatException
 import com.appblocker.store.RecessPrefs
 import com.appblocker.store.RecessPrefsFactory
@@ -33,28 +34,24 @@ class MonitorConfigModule(reactContext: ReactApplicationContext) :
     private val prefs: RecessPrefs
         get() = RecessPrefsFactory.get(reactApplicationContext)
 
-    /**
-     * Records the user's intent, then starts or stops the service to match. The intent is written
-     * first and verified; if the service then cannot be started the intent is put back, so the
-     * toggle never claims ON while nothing runs.
-     */
+    private val monitorSwitch by lazy {
+        MonitorSwitch(
+            prefs = prefs,
+            startService = { MonitorServiceController.start(reactApplicationContext) },
+            stopService = { MonitorServiceController.stop(reactApplicationContext) },
+            onEnabled = { MonitorRevival.onMonitoringEnabled(reactApplicationContext) },
+            onDisabled = { MonitorRevival.onMonitoringDisabled(reactApplicationContext) },
+        )
+    }
+
+    /** The toggle. The rules that make it trustworthy live in [MonitorSwitch], where they are tested. */
     @ReactMethod
     fun setMonitoringEnabled(enabled: Boolean, promise: Promise) {
-        val previous = prefs.isMonitoringEnabled()
         try {
-            prefs.setMonitoringEnabled(enabled)
-            if (enabled) {
-                MonitorServiceController.start(reactApplicationContext)
-                MonitorRevival.onMonitoringEnabled(reactApplicationContext)
-            } else {
-                MonitorRevival.onMonitoringDisabled(reactApplicationContext)
-                MonitorServiceController.stop(reactApplicationContext)
-            }
+            monitorSwitch.setEnabled(enabled)
             Log.i(TAG, "Monitoring intent set to $enabled")
             promise.resolve(null)
         } catch (e: Exception) {
-            runCatching { prefs.setMonitoringEnabled(previous) }
-            prefs.recordStopReason("enable_failed: ${e.javaClass.simpleName}")
             promise.reject(ERROR_MONITOR, e.message, e)
         }
     }

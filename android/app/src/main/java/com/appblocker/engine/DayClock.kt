@@ -15,32 +15,46 @@ interface DayClock {
 
 /**
  * Calendar-based [DayClock]. java.time is deliberately avoided (minSdk 21).
- * The zone is read on every call so a device timezone change is picked up.
+ *
+ * The monitor asks about the day every second, so the answer for the current local day (its key and
+ * its two boundaries) is kept and reused until the time leaves that day, the clock goes backwards,
+ * or the device timezone changes. Not thread-safe: used from the monitor's single thread.
  */
 class CalendarDayClock(
     private val zoneProvider: () -> TimeZone = { TimeZone.getDefault() },
 ) : DayClock {
-    override fun dayKey(nowMs: Long): String {
-        val calendar = calendarAt(nowMs)
-        return String.format(
-            Locale.ROOT,
-            "%04d-%02d-%02d",
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH) + 1,
-            calendar.get(Calendar.DAY_OF_MONTH),
-        )
+    private class LocalDay(val zoneId: String, val startMs: Long, val endMs: Long, val key: String)
+
+    private var cached: LocalDay? = null
+
+    override fun dayKey(nowMs: Long): String = localDay(nowMs).key
+
+    override fun nextDayStartMs(nowMs: Long): Long = localDay(nowMs).endMs
+
+    private fun localDay(nowMs: Long): LocalDay {
+        val zone = zoneProvider()
+        cached?.let { day ->
+            if (day.zoneId == zone.id && nowMs >= day.startMs && nowMs < day.endMs) return day
+        }
+        return compute(zone, nowMs).also { cached = it }
     }
 
-    override fun nextDayStartMs(nowMs: Long): Long {
-        val calendar = calendarAt(nowMs)
+    private fun compute(zone: TimeZone, nowMs: Long): LocalDay {
+        val calendar = Calendar.getInstance(zone).apply { timeInMillis = nowMs }
+        val key =
+            String.format(
+                Locale.ROOT,
+                "%04d-%02d-%02d",
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH) + 1,
+                calendar.get(Calendar.DAY_OF_MONTH),
+            )
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
+        val start = calendar.timeInMillis
         calendar.add(Calendar.DAY_OF_MONTH, 1)
-        return calendar.timeInMillis
+        return LocalDay(zone.id, start, calendar.timeInMillis, key)
     }
-
-    private fun calendarAt(nowMs: Long): Calendar =
-        Calendar.getInstance(zoneProvider()).apply { timeInMillis = nowMs }
 }

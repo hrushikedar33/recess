@@ -146,26 +146,15 @@ class RecessPrefsTest {
     // ---- liveness --------------------------------------------------------------------------
 
     @Test
-    fun `with no heartbeat there is nothing fresh`() {
+    fun `there is no heartbeat until the service writes one`() {
         assertNull(prefs.lastHeartbeatAt())
-        assertFalse(prefs.isHeartbeatFresh())
     }
 
     @Test
-    fun `a fresh heartbeat is fresh`() {
+    fun `the heartbeat records when the service last checked in`() {
         prefs.recordHeartbeat()
-        now = T0 + RecessPrefs.HEARTBEAT_STALE_MS - 1
 
         assertEquals(T0, prefs.lastHeartbeatAt())
-        assertTrue(prefs.isHeartbeatFresh())
-    }
-
-    @Test
-    fun `a stale heartbeat is not fresh`() {
-        prefs.recordHeartbeat()
-        now = T0 + RecessPrefs.HEARTBEAT_STALE_MS + 1
-
-        assertFalse(prefs.isHeartbeatFresh())
     }
 
     @Test

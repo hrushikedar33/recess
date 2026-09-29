@@ -78,12 +78,6 @@ class RecessPrefs(
 
     fun lastHeartbeatAt(): Long? = store.getLong(KEY_HEARTBEAT)
 
-    /** Whether the service wrote a heartbeat recently. Only a hang signal: it can look stale during deep sleep. */
-    fun isHeartbeatFresh(): Boolean {
-        val heartbeat = lastHeartbeatAt() ?: return false
-        return clock() - heartbeat <= HEARTBEAT_STALE_MS
-    }
-
     /** Recorded with its time, so the same reason happening twice can be told apart. */
     fun recordStopReason(reason: String) {
         store.putStringDurable(KEY_STOP_REASON, reason)
@@ -142,8 +136,6 @@ class RecessPrefs(
     }
 
     companion object {
-        /** A heartbeat older than this means the service is no longer running. */
-        const val HEARTBEAT_STALE_MS = 90_000L
 
         private const val KEY_ENABLED = "monitoringEnabled"
         private const val KEY_BLOCKED_APPS = "blockedAppsJson"

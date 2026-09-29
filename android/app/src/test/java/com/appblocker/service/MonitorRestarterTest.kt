@@ -85,4 +85,15 @@ class MonitorRestarterTest {
 
         assertNull(prefs.lastStopReason())
     }
+
+    @Test
+    fun `a refused start does not overwrite a more informative reason recorded earlier`() {
+        prefs.setMonitoringEnabled(true)
+        prefs.recordStopReason("previous process ended: LOW_MEMORY at 14:02")
+        startFailure = IllegalStateException("app is in the background")
+
+        restarter.restartIfNeeded("watchdog")
+
+        assertEquals("previous process ended: LOW_MEMORY at 14:02", prefs.lastStopReason())
+    }
 }

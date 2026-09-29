@@ -22,7 +22,11 @@ class MonitorRestarter(
             start()
             Result.STARTED
         } catch (e: Exception) {
-            prefs.recordStopReason("restart_failed ($reason): ${e.javaClass.simpleName}")
+            // Keep a more informative reason (say, why the process died) rather than overwrite it
+            // with a failure that a periodic watchdog would repeat every fifteen minutes.
+            if (prefs.lastStopReason() == null) {
+                prefs.recordStopReason("restart_failed ($reason): ${e.javaClass.simpleName}")
+            }
             Result.FAILED
         }
     }

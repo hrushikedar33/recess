@@ -299,4 +299,49 @@ class EnforcementEngineTest {
 
         assertEquals(1, actions.notifications().size)
     }
+
+    // ---- clock oddities and deliberate assumptions -----------------------------------------
+
+    @Test
+    fun `a clock that jumps backwards credits nothing and does not corrupt the counters`() {
+        engine.tick(T0 + 10 * SECOND, INSTA, listOf(rule(daily = HOUR)))
+
+        engine.tick(T0 + 5 * SECOND, INSTA, listOf(rule(daily = HOUR)))
+        engine.tick(T0 + 6 * SECOND, INSTA, listOf(rule(daily = HOUR)))
+
+        assertEquals(1 * SECOND, sessionUsedMs())
+        assertEquals(1 * SECOND, dailyUsedMs())
+    }
+
+    @Test
+    fun `changing timezone so it becomes another local day starts a fresh daily count`() {
+        var zoneOffsetDays = 0L
+        val movingClock =
+            object : DayClock {
+                override fun dayKey(nowMs: Long) = "day-${nowMs / DAY + zoneOffsetDays}"
+
+                override fun nextDayStartMs(nowMs: Long) = (nowMs / DAY + 1) * DAY
+            }
+        val local = EnforcementEngine(movingClock, EngineConfig(maxCreditMs = 3 * SECOND))
+        val rules = listOf(rule(session = HOUR, daily = HOUR))
+        repeat(6) { local.tick(T0 + it * SECOND, INSTA, rules) }
+        assertEquals(5 * SECOND, local.snapshot().apps.getValue(INSTA).dailyUsedMs)
+
+        zoneOffsetDays = 1 // the phone moved to a timezone where it is already the next day
+        local.tick(T0 + 6 * SECOND, INSTA, rules)
+        local.tick(T0 + 7 * SECOND, INSTA, rules)
+
+        assertEquals(2 * SECOND, local.snapshot().apps.getValue(INSTA).dailyUsedMs)
+        assertEquals(7 * SECOND, local.snapshot().apps.getValue(INSTA).sessionUsedMs)
+    }
+
+    @Test
+    fun `a session that is not blocked carries across midnight while the day total starts over`() {
+        val rules = listOf(rule(session = 30 * SECOND, cooldown = 5 * MINUTE, daily = HOUR))
+        ticks(101 * DAY - 10 * SECOND, 15, INSTA, *rules.toTypedArray())
+
+        assertEquals(15 * SECOND, sessionUsedMs())
+        // The tick at exactly midnight already belongs to the new day: ticks at 0..5 s, six credits.
+        assertEquals(6 * SECOND, dailyUsedMs())
+    }
 }
