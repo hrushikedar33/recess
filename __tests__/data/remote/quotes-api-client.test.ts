@@ -30,6 +30,17 @@ describe('fetchQuoteBatch', () => {
     );
   });
 
+  it('sends no cookies or saved credentials to the service', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(response([]));
+
+    await fetchQuoteBatch(fetchImpl);
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      QUOTES_API_URL,
+      expect.objectContaining({ credentials: 'omit' }),
+    );
+  });
+
   it('uses HTTPS', () => {
     expect(QUOTES_API_URL.startsWith('https://')).toBe(true);
   });

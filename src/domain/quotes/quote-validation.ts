@@ -8,11 +8,24 @@ const MAX_TEXT = 220;
 const MAX_AUTHOR = 40;
 const MAX_PER_BATCH = 50;
 
-const FORBIDDEN_TEXT = ['<', '>', '@', 'http', '&#', '&quot;', '&amp;', '&lt;'];
-// Matching control characters is the whole point of this check.
-// eslint-disable-next-line no-control-regex
-const CONTROL_CHARACTERS = /[\u0000-\u001F\u007F]/;
+/*
+ * An ALLOWLIST, not a list of known-bad things: the text comes from a website and ends up in a
+ * notification and a full-screen screen, so anything that is not plainly a sentence is refused.
+ * Latin letters (with accents), spaces and ordinary punctuation only. No digits (which is how
+ * phone numbers get in), no symbols or slashes (links, amounts), no emoji, no other scripts, and
+ * none of the invisible or direction-changing characters used to spoof text. Explicit ranges are
+ * used rather than Unicode property escapes so nothing depends on the JS engine supporting them.
+ * The native side (QuotePool.kt) applies the same rules again and must stay identical; both are
+ * tested against __tests__/fixtures/quote-validation-cases.json.
+ */
+const LETTERS = 'A-Za-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u024F';
+const TEXT_ALLOWED = new RegExp(
+  `^[${LETTERS} '\\u2018\\u2019"\\u201C\\u201D(),.;:!?\\-\\u2013\\u2014\\u2026]+$`,
+);
+const AUTHOR_ALLOWED = new RegExp(`^[${LETTERS} .'\\u2019\\-]+$`);
 const SENTENCE_END = /[.?!’”]$/;
+// A dot straight between letters looks like a web address ("example.com").
+const WEB_ADDRESS = /[A-Za-z]\.[A-Za-z]{2,}/;
 // The service answers with a fake "quote" when it is rate limiting; it must never reach a notification.
 const RATE_LIMIT_TEXT = /too many requests|auth key|unlimited access/i;
 const SERVICE_AUTHOR = /zenquotes|\.io|\.com/i;
@@ -35,25 +48,25 @@ const toCandidate = (entry: unknown): RemoteQuote | null => {
   const textOk =
     text.length >= MIN_TEXT &&
     text.length <= MAX_TEXT &&
+    TEXT_ALLOWED.test(text) &&
     SENTENCE_END.test(text) &&
-    !CONTROL_CHARACTERS.test(text) &&
-    !RATE_LIMIT_TEXT.test(text) &&
-    !FORBIDDEN_TEXT.some((token) => text.includes(token));
+    !WEB_ADDRESS.test(text) &&
+    !RATE_LIMIT_TEXT.test(text);
   const authorOk =
     author.length > 0 &&
     author.length <= MAX_AUTHOR &&
-    !CONTROL_CHARACTERS.test(author) &&
+    AUTHOR_ALLOWED.test(author) &&
+    !WEB_ADDRESS.test(author) &&
     !SERVICE_AUTHOR.test(author) &&
-    !UNATTRIBUTED.includes(author.toLowerCase()) &&
-    !FORBIDDEN_TEXT.some((token) => author.includes(token));
+    !UNATTRIBUTED.includes(author.toLowerCase());
 
   return textOk && authorOk ? { text, author } : null;
 };
 
 /**
- * Turns an untrusted API response into quotes that are safe to show in a notification: only
- * plain, attributed, sentence-length text, never a link, markup, or the service's own error
- * message, and never one already known. At most 50 per batch.
+ * Turns an untrusted API response into quotes that are safe to show in a notification: only plain,
+ * attributed, sentence-length text, never a link, markup, or the service's own error message, and
+ * never one already known. At most 50 per batch.
  */
 export function sanitizeRemoteQuotes(
   raw: unknown,

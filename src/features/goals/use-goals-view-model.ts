@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCases } from '../../app/di';
 import { AppError } from '../../core/errors/app-error';
@@ -6,6 +7,8 @@ import { ErrorMessages } from '../../core/errors/error-messages';
 import { Goal } from '../../core/types/domain.types';
 import { logger } from '../../core/utils/logger';
 import { summarizeGoals } from './goals-summary';
+
+const QUOTES_ATTRIBUTION_URL = 'https://zenquotes.io/';
 
 const messageFor = (error: unknown): string => {
   if (error instanceof AppError) {
@@ -101,6 +104,18 @@ export function useGoalsViewModel() {
 
   const summary = useMemo(() => summarizeGoals(goals), [goals]);
 
+  const handleOpenAttribution = useCallback(async () => {
+    try {
+      await Linking.openURL(QUOTES_ATTRIBUTION_URL);
+    } catch (failure) {
+      // No browser installed or the link was refused: nothing the user needs to be told about.
+      logger.warn(
+        '[Goals] Could not open the quotes attribution link',
+        failure,
+      );
+    }
+  }, []);
+
   return {
     goals,
     draft,
@@ -110,6 +125,7 @@ export function useGoalsViewModel() {
     onlineQuotes,
     onlineQuotesLoaded,
     handleToggleOnlineQuotes,
+    handleOpenAttribution,
     handleChangeDraft,
     handleAdd,
     handleToggle,

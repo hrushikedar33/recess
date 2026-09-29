@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
-import { NativeModules } from 'react-native';
+import { Linking, NativeModules } from 'react-native';
 import { useCases } from '@app/di';
 import { ErrorMessages } from '@core/errors/error-messages';
 import { GOALS_STORAGE_KEY } from '@core/constants/storage.keys';
@@ -262,5 +262,41 @@ describe('useGoalsViewModel: online quotes switch', () => {
     expect(result.current.onlineQuotes).toBe(false);
     expect(result.current.error).toBe(ErrorMessages.generic);
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe('useGoalsViewModel: the quotes attribution link', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('opens the quotes service website', async () => {
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    const { result } = renderHook(() => useGoalsViewModel());
+
+    await act(async () => {
+      await result.current.handleOpenAttribution();
+    });
+
+    expect(open).toHaveBeenCalledWith('https://zenquotes.io/');
+  });
+
+  it('does not crash the screen when no app can open the link', async () => {
+    jest
+      .spyOn(Linking, 'openURL')
+      .mockRejectedValue(new Error('No app can open this link'));
+    const { result } = renderHook(() => useGoalsViewModel());
+
+    await expect(
+      act(async () => {
+        await result.current.handleOpenAttribution();
+      }),
+    ).resolves.toBeUndefined();
   });
 });

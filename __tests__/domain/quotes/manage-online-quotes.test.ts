@@ -5,9 +5,14 @@ import { ManageOnlineQuotesUseCase } from '@domain/usecases/manage-online-quotes
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = 1_700_000_000_000;
 
+/** Letters only: digits are not allowed in quotes or authors. */
+const letters = (n: number) =>
+  String.fromCharCode(97 + Math.floor(n / 26)) +
+  String.fromCharCode(97 + (n % 26));
+
 const entry = (n: number) => ({
-  q: `Quote number ${n} is a fine and worthwhile one.`,
-  a: `Author ${n}`,
+  q: `Quote ${letters(n)} is a fine and worthwhile one.`,
+  a: `Author ${letters(n).toUpperCase()}`,
 });
 
 class FakeRepository implements IOnlineQuotesRepository {
@@ -18,6 +23,10 @@ class FakeRepository implements IOnlineQuotesRepository {
   fetches = 0;
   response: unknown = [entry(1), entry(2)];
   failure: Error | null = null;
+  /** When set, a fetch waits for this before answering, so a test can act while it is in flight. */
+  gate: Promise<void> | null = null;
+  /** The order of the writes that matter, for tests about crash-safety. */
+  log: string[] = [];
 
   async isEnabled() {
     return this.enabled;
@@ -35,16 +44,21 @@ class FakeRepository implements IOnlineQuotesRepository {
     return this.cached;
   }
   async saveCached(quotes: RemoteQuote[]) {
+    this.log.push(`cache:${quotes.length}`);
     this.cached = quotes;
   }
   async fetchBatch() {
     this.fetches += 1;
+    if (this.gate) {
+      await this.gate;
+    }
     if (this.failure) {
       throw this.failure;
     }
     return this.response;
   }
   async pushToNative(quotes: RemoteQuote[]) {
+    this.log.push(`push:${quotes.length}`);
     this.pushed.push(quotes);
   }
 }
@@ -121,7 +135,7 @@ describe('ManageOnlineQuotesUseCase', () => {
 
     it('adds new quotes to the ones already cached, without repeating any', async () => {
       repository.cached = [
-        { text: entry(1).q, author: 'Author 1' },
+        { text: entry(1).q, author: entry(1).a },
         { text: 'Older quote kept from last time.', author: 'Old Author' },
       ];
 
@@ -199,5 +213,93 @@ describe('ManageOnlineQuotesUseCase', () => {
     repository.enabled = false;
 
     await expect(useCase.isEnabled()).resolves.toBe(false);
+  });
+  describe('switching it off is final', () => {
+    const holdFetchOpen = () => {
+      let release: () => void = () => undefined;
+      repository.gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return release;
+    };
+
+    it('discards a fetch that finishes after the user switched the feature off', async () => {
+      const release = holdFetchOpen();
+      const inFlight = useCase.refreshIfDue();
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(repository.fetches).toBe(1);
+
+      await useCase.setEnabled(false);
+      release();
+      const result = await inFlight;
+
+      expect(result).toBe('disabled');
+      expect(repository.cached).toEqual([]);
+      expect(repository.pushed.every((quotes) => quotes.length === 0)).toBe(
+        true,
+      );
+    });
+
+    it('also discards it when the user switched off and on again meanwhile', async () => {
+      const release = holdFetchOpen();
+      const inFlight = useCase.refreshIfDue();
+      await new Promise((resolve) => setImmediate(resolve));
+
+      await useCase.setEnabled(false);
+      await useCase.setEnabled(true);
+      release();
+      await inFlight;
+
+      expect(repository.cached).toEqual([]);
+      expect(repository.pushed.every((quotes) => quotes.length === 0)).toBe(
+        true,
+      );
+    });
+
+    it('still keeps a fetch that finishes normally', async () => {
+      const release = holdFetchOpen();
+      const inFlight = useCase.refreshIfDue();
+      await new Promise((resolve) => setImmediate(resolve));
+      release();
+
+      await expect(inFlight).resolves.toBe('refreshed');
+      expect(repository.cached).toHaveLength(2);
+    });
+
+    it('clears native before the cache, so an interrupted switch-off is still noticed next time', async () => {
+      repository.cached = [
+        { text: 'A cached quote to forget.', author: 'Someone' },
+      ];
+
+      await useCase.setEnabled(false);
+
+      expect(repository.log.indexOf('push:0')).toBeGreaterThanOrEqual(0);
+      expect(repository.log.indexOf('push:0')).toBeLessThan(
+        repository.log.indexOf('cache:0'),
+      );
+    });
+
+    it('finishes an interrupted switch-off at the next start', async () => {
+      repository.enabled = false;
+      repository.cached = [
+        {
+          text: 'Left behind by an interrupted switch-off.',
+          author: 'Someone',
+        },
+      ];
+
+      await expect(useCase.refreshIfDue()).resolves.toBe('disabled');
+
+      expect(repository.cached).toEqual([]);
+      expect(repository.pushed).toEqual([[]]);
+    });
+
+    it('does not bother native at start when it is off and there is nothing to clear', async () => {
+      repository.enabled = false;
+
+      await useCase.refreshIfDue();
+
+      expect(repository.pushed).toEqual([]);
+    });
   });
 });

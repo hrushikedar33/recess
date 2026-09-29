@@ -14,8 +14,10 @@ export async function fetchQuoteBatch(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    // A public endpoint: nothing of ours (cookies, saved logins) should ever go with the request.
     const response = await fetchImpl(QUOTES_API_URL, {
       signal: controller.signal,
+      credentials: 'omit',
     });
     if (!response.ok) {
       throw new AppError(

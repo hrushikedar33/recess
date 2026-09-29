@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   FlatList,
-  Linking,
   StyleSheet,
   Switch,
   Text,
@@ -24,6 +23,7 @@ export default function GoalsScreen() {
     canAdd,
     onlineQuotes,
     handleToggleOnlineQuotes,
+    handleOpenAttribution,
     handleChangeDraft,
     handleAdd,
     handleToggle,
@@ -140,7 +140,7 @@ export default function GoalsScreen() {
         </View>
         {onlineQuotes && (
           <TouchableOpacity
-            onPress={() => Linking.openURL('https://zenquotes.io/')}
+            onPress={handleOpenAttribution}
             accessibilityRole="link"
             accessibilityLabel="Inspirational quotes provided by ZenQuotes API"
           >
