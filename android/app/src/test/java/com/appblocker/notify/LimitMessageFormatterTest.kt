@@ -22,14 +22,15 @@ class LimitMessageFormatterTest {
     private fun format(goals: List<GoalConfig> = emptyList(), event: NotifyLimitReached = event(), quote: Quote = QUOTE) =
         LimitMessageFormatter.format(event, quote, goals, time)
 
-    // ---- title and collapsed line (unchanged behaviour) ------------------------------------
+    // ---- title and status ------------------------------------------------------------------
 
     @Test
     fun `a session limit says time is up and when the app opens again`() {
         val message = format(event = event(until = 5_000L))
 
         assertEquals("Time's up on Instagram", message.title)
-        assertTrue(message.text.contains("Instagram is paused until at 5000"))
+        assertTrue(message.status.contains("Instagram is paused until at 5000"))
+        assertTrue(message.bigText.contains("Instagram is paused until at 5000"))
     }
 
     @Test
@@ -37,8 +38,39 @@ class LimitMessageFormatterTest {
         val message = format(event = event(BlockReason.DAILY_LIMIT))
 
         assertEquals("Instagram is done for today", message.title)
-        assertTrue(message.text.contains("tomorrow"))
-        assertFalse(message.text.contains("at 1000"))
+        assertTrue(message.status.contains("tomorrow"))
+        assertFalse(message.status.contains("at 1000"))
+    }
+
+    // ---- what shows without expanding -------------------------------------------------------
+
+    @Test
+    fun `the collapsed line is the quote, so it shows without expanding the notification`() {
+        val message = format()
+
+        assertEquals("“Confine yourself to the present.” — Marcus Aurelius", message.text)
+        assertEquals(message.quote, message.text)
+    }
+
+    @Test
+    fun `the parts are available separately for the full-screen takeover`() {
+        val message = format(goals = listOf(goal(1), goal(2)), event = event(until = 5_000L))
+
+        assertEquals("“Confine yourself to the present.” — Marcus Aurelius", message.quote)
+        assertEquals("Your goals:\n• Goal 1\n• Goal 2", message.goals)
+        assertEquals("Take a break. Instagram is paused until at 5000.", message.status)
+    }
+
+    @Test
+    fun `the expanded text holds the quote, the goals and the status`() {
+        val body = format(goals = listOf(goal(1))).bigText
+
+        assertEquals(
+            "“Confine yourself to the present.” — Marcus Aurelius\n\n" +
+                "Your goals:\n• Goal 1\n\n" +
+                "Take a break. Instagram is paused until at 1000.",
+            body,
+        )
     }
 
     // ---- the quote -------------------------------------------------------------------------

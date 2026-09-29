@@ -7,14 +7,25 @@ import com.appblocker.engine.EngineAction
 import com.appblocker.notify.BreakIntents
 import com.appblocker.notify.LimitAlerts
 import com.appblocker.notify.LimitNotifier
+import com.appblocker.notify.LimitPresenter
+import com.appblocker.notify.TakeoverOverlay
 
 /** Carries out the engine's decisions on a real device. Failures propagate: the ticker reports them. */
 class AndroidActionSink(
     context: Context,
     private val notifier: LimitNotifier,
     private val alerts: LimitAlerts,
+    private val takeover: TakeoverOverlay,
 ) : ActionSink {
     private val context = context.applicationContext
+
+    private val presenter =
+        LimitPresenter(
+            notify = notifier::post,
+            takeover = takeover::show,
+            fallback = { this.context.startActivity(BreakIntents.intent(this.context)) },
+            onError = { what, error -> Log.w("Recess", what, error) },
+        )
 
     /**
      * Sends the user to the home screen. This relies on the "Display over other apps" permission,
@@ -31,16 +42,15 @@ class AndroidActionSink(
 
     /**
      * Once per block: one notification and one full-screen takeover, both showing the same quote
-     * and goals. The notification is posted first so it exists even if the takeover is refused.
+     * and goals. The notification goes first so it exists whatever the takeover does; if the
+     * takeover window cannot be drawn, the Break screen is opened instead.
      */
     override fun limitReached(event: EngineAction.NotifyLimitReached) {
-        notifier.post(event.packageName, alerts.compose(event))
-        try {
-            context.startActivity(BreakIntents.intent(context))
-        } catch (e: Exception) {
-            Log.w("Recess", "Could not take over the screen; the notification remains", e)
-        }
+        presenter.present(event.packageName, alerts.compose(event))
     }
 
-    override fun blockEnded(event: EngineAction.BlockEnded) = notifier.cancel(event.packageName)
+    override fun blockEnded(event: EngineAction.BlockEnded) {
+        notifier.cancel(event.packageName)
+        takeover.dismiss(event.packageName)
+    }
 }

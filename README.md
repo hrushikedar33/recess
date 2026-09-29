@@ -7,9 +7,12 @@ in the spirit of Opal. Pick the apps, give each a **session limit**, a **cooldow
 When a limit is reached, Recess:
 
 1. sends the app to the **home screen** (and keeps doing so until the cooldown ends),
-2. posts **one** notification with a motivational quote and your unfinished goals, and
-3. opens a full-screen **Break** screen with the same quote, your goals (you can tick them off) and
-   the time left.
+2. posts **one** notification: the quote is on its first line, and expanding it shows your
+   unfinished goals and when the app opens again, and
+3. covers the screen with a full-screen **time's-up window** showing the quote, your goals and
+   when the app opens again. **Go home** closes it; **Open Recess** opens the Break screen (live
+   countdown, goals you can tick off). It also closes by itself after a minute and when the block
+   ends. Tapping the notification opens the Break screen too.
 
 ## How it works
 
@@ -70,7 +73,7 @@ Being honest about the limits is part of the design:
 | Permission | Why |
 |---|---|
 | Usage access (`PACKAGE_USAGE_STATS`, granted in Settings) | See which app is in the foreground |
-| Display over other apps (`SYSTEM_ALERT_WINDOW`) | Lets the service open the Break screen from the background |
+| Display over other apps (`SYSTEM_ALERT_WINDOW`) | Lets the service send you home and draw the full-screen time's-up window from the background |
 | `POST_NOTIFICATIONS` | The limit notification and the "Recess is active" notification |
 | `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_SPECIAL_USE` | Keep the monitor alive; `specialUse` has no time limit and may start after boot |
 | `RECEIVE_BOOT_COMPLETED` | Start the monitor again after a reboot or an update |
@@ -203,8 +206,12 @@ throttled to one per 1.5 s.
 network at the moment a limit is hit. Fetched quotes are treated as hostile input (allowlist,
 double validation, kill switch).
 
-**AD7 - One notification per limit event.** Fixed id, replaced not stacked, plus the Break screen
-opened directly. Reopening a blocked app during the cooldown never posts again.
+**AD7 - One notification per limit event, and a takeover that is a window, not an activity.** Fixed
+id, replaced not stacked; reopening a blocked app during the cooldown never posts again. Since
+Android 10 a background service is often refused when it starts an *activity*, and a full-screen
+notification needs a permission most people never grant, so the takeover is a plain overlay window
+added by the service (it needs only the overlay permission, and always has a Go home button). The
+Break screen is the fallback when a window cannot be drawn, and what the notification opens.
 
 **AD8 - JS keeps AsyncStorage, native keeps a mirror.** Every change to rules or goals is pushed to
 native, and everything is pushed again on each app start (which also migrates old installs). Native

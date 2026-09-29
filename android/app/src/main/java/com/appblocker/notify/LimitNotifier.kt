@@ -27,7 +27,7 @@ class LimitNotifier(context: Context) {
             NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(com.appblocker.R.drawable.ic_notification)
                 .setContentTitle(message.title)
-                .setContentText(message.text)
+                .setContentText(message.status)
                 .build()
         val builder =
             NotificationCompat.Builder(context, CHANNEL_ID)

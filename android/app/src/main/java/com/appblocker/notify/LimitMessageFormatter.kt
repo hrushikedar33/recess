@@ -5,8 +5,24 @@ import com.appblocker.engine.EngineAction
 import com.appblocker.quotes.Quote
 import com.appblocker.store.GoalConfig
 
-/** [text] is the collapsed line; [bigText] is the expanded body with the quote and the goals. */
-data class LimitMessage(val title: String, val text: String, val bigText: String)
+/**
+ * What the user is told, in parts so each surface can lay it out itself: the notification (collapsed
+ * and expanded) and the full-screen takeover.
+ *
+ * @property status what happened and when the app opens again
+ * @property quote the quote with its author, on one line
+ * @property goals the "Your goals" section, or a nudge when there is nothing to list
+ */
+data class LimitMessage(val title: String, val status: String, val quote: String, val goals: String) {
+    /**
+     * The collapsed line, which is all that shows in a heads-up or an unexpanded drawer entry, so
+     * it carries the quote rather than the bookkeeping.
+     */
+    val text: String get() = quote
+
+    /** The expanded body: quote, then goals, then the status. */
+    val bigText: String get() = "$quote\n\n$goals\n\n$status"
+}
 
 /** Wording for the limit notification. Pure, so it is testable without Android. */
 object LimitMessageFormatter {
@@ -24,7 +40,7 @@ object LimitMessageFormatter {
         goals: List<GoalConfig>,
         formatTime: (Long) -> String,
     ): LimitMessage {
-        val (title, text) =
+        val (title, status) =
             when (event.reason) {
                 BlockReason.SESSION_COOLDOWN ->
                     "Time's up on ${event.appName}" to
@@ -33,8 +49,8 @@ object LimitMessageFormatter {
                     "${event.appName} is done for today" to
                         "You have used your daily time. It opens again tomorrow."
             }
-        val body = "$OPEN_QUOTE${quote.text}$CLOSE_QUOTE $DASH ${quote.author}\n\n${goalsSection(goals)}"
-        return LimitMessage(title, text, body)
+        val quoteLine = "$OPEN_QUOTE${quote.text}$CLOSE_QUOTE $DASH ${quote.author}"
+        return LimitMessage(title, status, quoteLine, goalsSection(goals))
     }
 
     private fun goalsSection(goals: List<GoalConfig>): String {

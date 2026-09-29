@@ -18,6 +18,7 @@ import com.appblocker.engine.CalendarDayClock
 import com.appblocker.engine.EnforcementEngine
 import com.appblocker.notify.LimitAlerts
 import com.appblocker.notify.LimitNotifier
+import com.appblocker.notify.TakeoverOverlay
 import com.appblocker.quotes.QuoteAssets
 import com.appblocker.quotes.QuotePool
 import com.appblocker.quotes.QuoteRepository
@@ -42,6 +43,7 @@ class MonitorService : Service() {
     private var loop: TickLoop? = null
     private var screenReceiver: BroadcastReceiver? = null
     private var loopStarted = false
+    private var takeover: TakeoverOverlay? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -88,6 +90,7 @@ class MonitorService : Service() {
 
     override fun onDestroy() {
         MonitorRuntime.isRunning = false
+        takeover?.dismissAll()
         screenReceiver?.let { runCatching { unregisterReceiver(it) } }
         screenReceiver = null
         loop?.cancel()
@@ -160,7 +163,7 @@ class MonitorService : Service() {
             pollForeground = detector::poll,
             isScreenOn = source::isInteractive,
             healthProbe = AndroidHealthProbe(this),
-            sink = AndroidActionSink(this, LimitNotifier(this), buildLimitAlerts()),
+            sink = AndroidActionSink(this, LimitNotifier(this), buildLimitAlerts(), TakeoverOverlay(this).also { takeover = it }),
             clock = System::currentTimeMillis,
             onError = { message, error -> Log.w(TAG, message, error) },
         )
