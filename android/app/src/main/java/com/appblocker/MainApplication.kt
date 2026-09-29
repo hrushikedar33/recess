@@ -11,6 +11,7 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.soloader.SoLoader
 import com.appblocker.modules.applist.AppListPackage
+import com.appblocker.modules.monitor.MonitorPackage
 import com.appblocker.modules.usagestats.UsageStatsPackage
 
 class MainApplication : Application(), ReactApplication {
@@ -21,6 +22,7 @@ class MainApplication : Application(), ReactApplication {
                 PackageList(this).packages.apply {
                     add(UsageStatsPackage())
                     add(AppListPackage())
+                    add(MonitorPackage())
                 }
 
             override fun getJSMainModuleName(): String = "index"

@@ -31,4 +31,15 @@ Object.assign(NativeModules, {
     getInstalledApps: jest.fn(async () => []),
     getAppIcon: jest.fn(async () => null),
   },
+  MonitorConfigModule: {
+    setMonitoringEnabled: jest.fn(async () => undefined),
+    getMonitorStatus: jest.fn(async () => ({
+      enabled: false,
+      running: false,
+      lastHeartbeatAt: null,
+      lastStopReason: null,
+    })),
+    syncBlockedApps: jest.fn(async () => undefined),
+    syncGoals: jest.fn(async () => undefined),
+  },
 });
