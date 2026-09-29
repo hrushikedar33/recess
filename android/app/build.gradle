@@ -114,6 +114,10 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    testImplementation("junit:junit:4.13.2")
+    // android.jar only stubs org.json in local unit tests; the real artifact makes the codec testable.
+    testImplementation("org.json:json:20240303")
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
