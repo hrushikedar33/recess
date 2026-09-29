@@ -3,15 +3,10 @@ import {
   OEM_GUIDANCE_DISMISSED_STORAGE_KEY,
 } from '../../core/constants/storage.keys';
 import { AsyncStorageAdapter } from '../local/storage/async-storage-adapter';
-
-export interface NoticeState {
-  /** The last stop reason the user has already seen and dismissed. */
-  ackedStopReason: string | null;
-  oemGuidanceDismissed: boolean;
-}
+import { INoticesRepository, NoticeState } from './i-notices-repository';
 
 /** Remembers which one-time notices the user has already dismissed. Unreadable storage means "none". */
-export class NoticesRepository {
+export class NoticesRepository implements INoticesRepository {
   async getState(): Promise<NoticeState> {
     try {
       const [ackedStopReason, dismissed] = await Promise.all([

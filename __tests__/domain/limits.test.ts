@@ -1,4 +1,4 @@
-import { describeLimits, validateLimits } from '@domain/limits';
+import { validateLimits } from '@domain/limits';
 
 describe('validateLimits', () => {
   it('accepts a session limit below the daily budget', () => {
@@ -62,27 +62,5 @@ describe('validateLimits', () => {
         dailyLimitMinutes: 60,
       }),
     ).toBe('The session limit must be at least 1 minute.');
-  });
-});
-
-describe('describeLimits', () => {
-  const base = {
-    packageName: 'p',
-    appName: 'A',
-    limitMinutes: 10,
-    cooldownMinutes: 5,
-    isActive: true,
-  };
-
-  it('lists the session limit, cooldown and daily budget', () => {
-    expect(describeLimits({ ...base, dailyLimitMinutes: 60 })).toBe(
-      '10 min session · 5 min cooldown · 60 min/day',
-    );
-  });
-
-  it('says there is no daily budget for a rule saved before daily budgets existed', () => {
-    expect(describeLimits(base)).toBe(
-      '10 min session · 5 min cooldown · no daily cap',
-    );
   });
 });

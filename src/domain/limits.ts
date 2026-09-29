@@ -1,5 +1,3 @@
-import { BlockedApp } from '../core/types/domain.types';
-
 export interface LimitValues {
   limitMinutes: number;
   cooldownMinutes: number;
@@ -28,12 +26,4 @@ export function validateLimits({
     return 'The daily budget must be at least as long as one session.';
   }
   return null;
-}
-
-export function describeLimits(app: BlockedApp): string {
-  const daily =
-    app.dailyLimitMinutes === undefined
-      ? 'no daily cap'
-      : `${app.dailyLimitMinutes} min/day`;
-  return `${app.limitMinutes} min session · ${app.cooldownMinutes} min cooldown · ${daily}`;
 }

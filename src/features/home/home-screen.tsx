@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlockedApp } from '../../core/types/domain.types';
-import { describeLimits } from '../../domain/limits';
 import { Colors } from '../../shared/theme/colors';
+import { describeLimits } from './limit-summary';
 import { useHomeViewModel } from './use-home-view-model';
 
 export default function HomeScreen() {

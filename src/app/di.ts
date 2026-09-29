@@ -6,7 +6,6 @@ import { OnlineQuotesRepository } from '../data/repositories/online-quotes-repos
 import { InstalledAppsRepository } from '../data/repositories/installed-apps-repository';
 import { AddBlockedAppUseCase } from '../domain/usecases/add-blocked-app-use-case';
 import { AddGoalUseCase } from '../domain/usecases/add-goal-use-case';
-import { CheckUsageLimitUseCase } from '../domain/usecases/check-usage-limit-use-case';
 import { GetBlockedAppsUseCase } from '../domain/usecases/get-blocked-apps-use-case';
 import { GetGoalsUseCase } from '../domain/usecases/get-goals-use-case';
 import { GetLimitEventUseCase } from '../domain/usecases/get-limit-event-use-case';
@@ -41,7 +40,6 @@ export const useCases = {
   toggleBlockedApp: new ToggleBlockedAppUseCase(blockedAppsRepository),
   syncBlockedApps: new SyncBlockedAppsUseCase(blockedAppsRepository),
   getInstalledApps: new GetInstalledAppsUseCase(installedAppsRepository),
-  checkUsageLimit: new CheckUsageLimitUseCase(),
   getGoals: new GetGoalsUseCase(goalsRepository),
   addGoal: new AddGoalUseCase(goalsRepository),
   toggleGoal: new ToggleGoalUseCase(goalsRepository),
