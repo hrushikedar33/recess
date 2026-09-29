@@ -19,8 +19,16 @@ Object.assign(NativeModules, {
     requestPermission: jest.fn(),
     getAppUsageToday: jest.fn(async () => 0),
     getForegroundApp: jest.fn(async () => null),
+    sendAppToHome: jest.fn(),
+    bringAppToForeground: jest.fn(),
+    hasOverlayPermission: jest.fn(async () => false),
+    requestOverlayPermission: jest.fn(),
+    showLimitNotification: jest.fn(),
+    isBatteryOptimizationIgnored: jest.fn(async () => false),
+    requestIgnoreBatteryOptimization: jest.fn(),
   },
   AppListModule: {
     getInstalledApps: jest.fn(async () => []),
+    getAppIcon: jest.fn(async () => null),
   },
 });
