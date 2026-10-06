@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { usePressScale } from '../motion/use-press-scale';
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 /** Looks small, touches big: 8 dp of invisible padding on every side keeps targets at 48 dp. */
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
@@ -32,12 +34,16 @@ export function PressableScale({
 }: PressableScaleProps) {
   const press = usePressScale();
 
+  // One element: the caller's style (flex, width, alignSelf...) and the squish transform go on the
+  // touchable itself. An inner wrapper inside an unsized Pressable collapses to its content's width
+  // in a row, which once squeezed goal titles to nothing.
   return (
-    <Pressable
+    <AnimatedPressable
       {...rest}
       disabled={disabled}
       hitSlop={HIT_SLOP}
       accessibilityRole={accessibilityRole}
+      style={[style, { transform: [{ scale: press.scale }] }]}
       onPressIn={(event: GestureResponderEvent) => {
         press.onPressIn();
         onPressIn?.(event);
@@ -47,9 +53,7 @@ export function PressableScale({
         onPressOut?.(event);
       }}
     >
-      <Animated.View style={[style, { transform: [{ scale: press.scale }] }]}>
-        {children}
-      </Animated.View>
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }

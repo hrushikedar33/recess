@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import React from 'react';
-import { AccessibilityInfo, Text } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
 import * as haptics from '@shared/motion/haptics';
 import { Card } from '@shared/ui/card';
 import { Chip } from '@shared/ui/chip';
@@ -70,6 +70,26 @@ describe('PressableScale', () => {
     const { hitSlop } = screen.getByRole('button', { name: 'Tiny' }).props;
 
     expect(hitSlop).toEqual({ top: 8, bottom: 8, left: 8, right: 8 });
+  });
+
+  it('puts the caller layout on the touchable itself, so flex and width really apply', () => {
+    // A wrapper inside an unsized Pressable collapsed goal rows to ~40 px and hid their titles.
+    render(
+      <PressableScale
+        accessibilityLabel="Wide"
+        style={{ flex: 1, alignSelf: 'stretch' }}
+        onPress={() => undefined}
+      >
+        <Text>x</Text>
+      </PressableScale>,
+    );
+
+    const style = StyleSheet.flatten(
+      screen.getByRole('button', { name: 'Wide' }).props.style,
+    );
+
+    expect(style).toMatchObject({ flex: 1, alignSelf: 'stretch' });
+    expect(style.transform).toBeDefined();
   });
 
   it('can carry another role, such as a link', () => {
@@ -296,6 +316,16 @@ describe('GoalRow', () => {
 
     expect(haptics.success).not.toHaveBeenCalled();
     expect(screen.queryByTestId('goal-confetti', HIDDEN)).toBeNull();
+  });
+
+  it('gives the title the row width instead of squeezing it: the tap area is flexible', () => {
+    renderRow();
+
+    const style = StyleSheet.flatten(
+      screen.getByRole('checkbox', { name: 'Finish the report' }).props.style,
+    );
+
+    expect(style).toMatchObject({ flex: 1 });
   });
 
   it('has a labelled remove button when removal is offered', () => {
