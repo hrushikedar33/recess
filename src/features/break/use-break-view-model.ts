@@ -5,6 +5,8 @@ import { useCases } from '../../app/di';
 import { Goal } from '../../core/types/domain.types';
 import { LimitEvent } from '../../core/types/native.types';
 import { logger } from '../../core/utils/logger';
+import { SystemUiAdapter } from '../../data/local/native/system-ui-adapter';
+import { copy } from '../../shared/copy';
 import { formatDuration } from '../../core/utils/time.utils';
 import { remainingSeconds } from './break-countdown';
 
@@ -62,13 +64,32 @@ export function useBreakViewModel() {
     }
   }, []);
 
+  // The takeover fills the whole display: hide the system bars while this screen is up.
+  useFocusEffect(
+    useCallback(() => {
+      SystemUiAdapter.setImmersive(true);
+      return () => {
+        SystemUiAdapter.setImmersive(false);
+      };
+    }, []),
+  );
+
   /**
-   * Leaves Recess, which returns to whatever was underneath (the phone's home screen, after the
-   * takeover). The monitor keeps running in its own service. It is never a trap: the system back
-   * button also works on this screen.
+   * Shows the phone's real home screen. Leaving Recess instead would only reveal whatever is
+   * underneath this screen, which after a takeover is the paused app itself. If the home screen
+   * cannot be started, leaving is the fallback, so this is never a trap (the system back button
+   * also works here). The monitor keeps running in its own service either way.
    */
-  const handleDone = useCallback(() => {
-    BackHandler.exitApp();
+  const handleDone = useCallback(async () => {
+    try {
+      await SystemUiAdapter.goHome();
+    } catch (error) {
+      logger.warn(
+        '[Break] Could not show the home screen, leaving instead',
+        error,
+      );
+      BackHandler.exitApp();
+    }
   }, []);
 
   const remaining = event ? remainingSeconds(event.blockedUntilMs, now) : 0;
@@ -100,19 +121,21 @@ export function useBreakViewModel() {
 
 function describe(status: BreakStatus, isDaily: boolean, appName: string) {
   if (status === 'none' || status === 'loading') {
-    return {
-      headline: 'No break right now',
-      detail:
-        'When an app reaches its limit, your quote and goals will show up here.',
-    };
+    return copy.break.none;
   }
   if (status === 'over') {
     return {
-      headline: 'Break over',
-      detail: `${appName} is available again. Use it on purpose.`,
+      headline: copy.break.over.headline,
+      detail: copy.break.over.detail(appName),
     };
   }
   return isDaily
-    ? { headline: 'Done for today', detail: `${appName} opens again tomorrow.` }
-    : { headline: 'Time to pause', detail: `${appName} is paused for now.` };
+    ? {
+        headline: copy.break.daily.headline,
+        detail: copy.break.daily.detail(appName),
+      }
+    : {
+        headline: copy.break.session.headline,
+        detail: copy.break.session.detail(appName),
+      };
 }

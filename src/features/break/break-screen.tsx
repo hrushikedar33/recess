@@ -1,211 +1,119 @@
 import React from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Goal } from '../../core/types/domain.types';
-import { Colors } from '../../shared/theme/colors';
-import { useBreakViewModel } from './use-break-view-model';
+import { copy } from '../../shared/copy';
+import { useEntrance } from '../../shared/motion/use-entrance';
+import { palette, radius, space, typography } from '../../shared/theme/tokens';
+import { Emoji } from '../../shared/ui/emoji';
+import { Glow } from '../../shared/ui/glow';
+import { PressableScale } from '../../shared/ui/pressable-scale';
+import { GoalsSection } from './components/goals-section';
+import { QuoteCard } from './components/quote-card';
+import { Timer } from './components/timer';
+import { BreakStatus, useBreakViewModel } from './use-break-view-model';
+
+const FACE: Record<BreakStatus, string> = {
+  loading: '👀',
+  none: '👀',
+  active: '🙃',
+  over: '🎉',
+};
 
 export default function BreakScreen() {
   const {
     status,
     event,
     goals,
+    isDaily,
     headline,
     detail,
     countdownText,
     handleToggleGoal,
     handleDone,
   } = useBreakViewModel();
-
-  const renderGoal = (goal: Goal) => (
-    <TouchableOpacity
-      key={goal.id}
-      style={styles.goalRow}
-      onPress={() => handleToggleGoal(goal.id)}
-      accessibilityRole="checkbox"
-      accessibilityLabel={goal.title}
-      accessibilityState={{ checked: goal.done }}
-    >
-      <View style={[styles.checkbox, goal.done && styles.checkboxDone]}>
-        {goal.done && <Text style={styles.checkmark}>✓</Text>}
-      </View>
-      <Text style={[styles.goalTitle, goal.done && styles.goalTitleDone]}>
-        {goal.title}
-      </Text>
-    </TouchableOpacity>
-  );
+  const entrance = useEntrance(0, 24);
+  const face = isDaily && status === 'active' ? '🌙' : FACE[status];
+  const hasBreak = status === 'active' || status === 'over';
 
   return (
     <SafeAreaView style={styles.container}>
+      <Glow color={palette.glowBlocked} size={420} style={styles.glowTop} />
+      <Glow color={palette.glowPrimary} size={360} style={styles.glowBottom} />
+
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.headline} accessibilityRole="header">
-          {headline}
-        </Text>
-        <Text style={styles.detail}>{detail}</Text>
+        <Animated.View style={[styles.hero, entrance]}>
+          <Emoji size={56}>{face}</Emoji>
+          <Text style={styles.headline} accessibilityRole="header">
+            {headline}
+          </Text>
+          <Text style={styles.detail}>{detail}</Text>
+        </Animated.View>
 
-        {countdownText !== '' && (
-          <View
-            style={styles.timer}
-            accessible
-            accessibilityLabel={`Time left: ${countdownText}`}
-          >
-            <Text style={styles.timerValue}>{countdownText}</Text>
-            <Text style={styles.timerLabel}>until it opens</Text>
-          </View>
+        {countdownText !== '' && <Timer text={countdownText} />}
+
+        {event && hasBreak && (
+          <QuoteCard text={event.quote.text} author={event.quote.author} />
         )}
 
-        {event && (
-          <View style={styles.card}>
-            <Text style={styles.quote}>{`“${event.quote.text}”`}</Text>
-            <Text style={styles.author}>{`— ${event.quote.author}`}</Text>
-          </View>
-        )}
-
-        {event && (
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Your goals</Text>
-            {goals.length === 0 ? (
-              <Text style={styles.emptyGoals}>
-                Nothing here yet. Add goals from the home screen so they are
-                waiting for you next time.
-              </Text>
-            ) : (
-              goals.map(renderGoal)
-            )}
-          </View>
+        {event && hasBreak && (
+          <GoalsSection goals={goals} onToggle={handleToggleGoal} />
         )}
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.doneButton}
+        <PressableScale
+          accessibilityLabel={
+            status === 'none' ? copy.break.closeA11y : copy.break.leaveA11y
+          }
           onPress={handleDone}
-          accessibilityRole="button"
-          accessibilityLabel={status === 'none' ? 'Close' : 'Done for now'}
+          style={styles.cta}
         >
-          <Text style={styles.doneText}>
-            {status === 'none' ? 'Close' : "I'm done for now"}
+          <Text style={styles.ctaText}>
+            {status === 'none' ? copy.break.close : copy.break.leave}
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
     </SafeAreaView>
   );
 }
 
-const MIN_TOUCH = 48;
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: palette.canvas, overflow: 'hidden' },
+  glowTop: { position: 'absolute', top: -160, right: -160 },
+  glowBottom: { position: 'absolute', bottom: -180, left: -180 },
   content: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 24,
-    alignItems: 'center',
-    gap: 16,
+    paddingHorizontal: space.xl,
+    paddingTop: space.xxl,
+    paddingBottom: space.xl,
+    gap: space.xl,
   },
+  hero: { alignItems: 'center', gap: space.sm },
   headline: {
-    color: Colors.textPrimary,
-    fontSize: 32,
-    fontWeight: '800',
+    ...typography.display,
+    color: palette.textPrimary,
     textAlign: 'center',
-    letterSpacing: -0.5,
   },
   detail: {
-    color: Colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
+    ...typography.body,
+    fontSize: 16,
+    lineHeight: 23,
+    color: palette.textSecondary,
     textAlign: 'center',
   },
-  timer: {
-    width: 148,
-    height: 148,
-    borderRadius: 74,
-    borderWidth: 3,
-    borderColor: Colors.accentBorder,
-    backgroundColor: Colors.accentMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 8,
+  footer: {
+    paddingHorizontal: space.xl,
+    paddingTop: space.md,
+    paddingBottom: space.xl,
   },
-  timerValue: {
-    color: Colors.accent,
-    fontSize: 34,
-    fontWeight: '800',
-    letterSpacing: -1,
-  },
-  timerLabel: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginTop: 2,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 20,
-    gap: 10,
-  },
-  quote: {
-    color: Colors.textPrimary,
-    fontSize: 18,
-    lineHeight: 26,
-    fontStyle: 'italic',
-  },
-  author: { color: Colors.textSecondary, fontSize: 14 },
-  cardLabel: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  goalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: MIN_TOUCH,
-    gap: 12,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: Colors.textDisabled,
+  cta: {
+    minHeight: 56,
+    borderRadius: radius.pill,
+    backgroundColor: palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxDone: {
-    backgroundColor: Colors.success,
-    borderColor: Colors.success,
-  },
-  checkmark: { color: Colors.background, fontWeight: '800', fontSize: 14 },
-  goalTitle: { flex: 1, color: Colors.textPrimary, fontSize: 15 },
-  goalTitleDone: {
-    color: Colors.textSecondary,
-    textDecorationLine: 'line-through',
-  },
-  emptyGoals: { color: Colors.textSecondary, fontSize: 14, lineHeight: 20 },
-  footer: { paddingHorizontal: 24, paddingBottom: 24, paddingTop: 8 },
-  doneButton: {
-    minHeight: MIN_TOUCH,
-    backgroundColor: Colors.accent,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-  },
-  doneText: { color: Colors.textPrimary, fontWeight: '700', fontSize: 16 },
+  ctaText: { ...typography.heading, color: palette.onPrimary },
 });

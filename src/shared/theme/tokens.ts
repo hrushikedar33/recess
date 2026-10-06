@@ -31,6 +31,10 @@ export const palette = {
   warning: '#FFB84D',
   warningMuted: '#FFB84D1F',
 
+  /** Very faint colour layers, stacked into a soft glow (no gradient library needed). */
+  glowBlocked: '#FF5C8A0D',
+  glowPrimary: '#D4FF3A0A',
+
   scrim: '#000000B3',
 } as const;
 

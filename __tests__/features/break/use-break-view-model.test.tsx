@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { BackHandler, Linking, NativeModules } from 'react-native';
 import { GOALS_STORAGE_KEY } from '@core/constants/storage.keys';
+import { copy } from '@shared/copy';
 import { LimitEvent } from '@core/types/native.types';
 import { useBreakViewModel } from '@features/break/use-break-view-model';
 
@@ -22,6 +23,7 @@ jest.mock('@react-navigation/native', () => {
 });
 
 const monitor = NativeModules.MonitorConfigModule;
+const systemUi = NativeModules.SystemUiModule;
 const NOW = 1_700_000_000_000;
 
 const event = (overrides: Partial<LimitEvent> = {}): LimitEvent => ({
@@ -136,8 +138,8 @@ describe('useBreakViewModel', () => {
     const { result } = await renderBreak();
 
     expect(result.current.isDaily).toBe(true);
-    expect(result.current.headline).toBe('Done for today');
-    expect(result.current.detail).toContain('tomorrow');
+    expect(result.current.headline).toBe(copy.break.daily.headline);
+    expect(result.current.detail).toBe(copy.break.daily.detail('Instagram'));
     expect(result.current.countdownText).toBe('');
   });
 
@@ -179,28 +181,51 @@ describe('useBreakViewModel', () => {
     );
   });
 
-  it("leaves Recess when the user is done, so the phone's home screen is what they see", async () => {
+  it('takes the user to the real home screen when they are done', async () => {
     storedEvent();
     const exitApp = jest
       .spyOn(BackHandler, 'exitApp')
       .mockImplementation(() => undefined);
     const { result } = await renderBreak();
 
-    act(() => result.current.handleDone());
+    await act(async () => {
+      await result.current.handleDone();
+    });
+
+    expect(systemUi.goHome).toHaveBeenCalledTimes(1);
+    // Exiting would only reveal the paused app underneath this screen.
+    expect(exitApp).not.toHaveBeenCalled();
+  });
+
+  it('still lets the user out if the home screen cannot be started', async () => {
+    storedEvent();
+    systemUi.goHome.mockRejectedValueOnce({ code: 'NO_ACTIVITY' });
+    const exitApp = jest
+      .spyOn(BackHandler, 'exitApp')
+      .mockImplementation(() => undefined);
+    const { result } = await renderBreak();
+
+    await act(async () => {
+      await result.current.handleDone();
+    });
 
     expect(exitApp).toHaveBeenCalledTimes(1);
   });
 
-  it('does the same when opened cold from the link, with nothing behind it', async () => {
+  it('still lets the user out when the native module is missing', async () => {
     storedEvent();
-    mockNavigation.canGoBack.mockReturnValue(false);
+    const original = NativeModules.SystemUiModule;
+    NativeModules.SystemUiModule = undefined;
     const exitApp = jest
       .spyOn(BackHandler, 'exitApp')
       .mockImplementation(() => undefined);
     const { result } = await renderBreak();
 
-    act(() => result.current.handleDone());
+    await act(async () => {
+      await result.current.handleDone();
+    });
 
+    NativeModules.SystemUiModule = original;
     expect(exitApp).toHaveBeenCalledTimes(1);
   });
 
@@ -209,10 +234,24 @@ describe('useBreakViewModel', () => {
     jest.spyOn(BackHandler, 'exitApp').mockImplementation(() => undefined);
     const { result } = await renderBreak();
 
-    act(() => result.current.handleDone());
+    await act(async () => {
+      await result.current.handleDone();
+    });
 
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
     expect(mockNavigation.reset).not.toHaveBeenCalled();
+  });
+
+  it('hides the system bars while the screen is showing and brings them back after', async () => {
+    storedEvent();
+    systemUi.setImmersive.mockClear();
+
+    const { unmount } = await renderBreak();
+    expect(systemUi.setImmersive).toHaveBeenLastCalledWith(true);
+
+    unmount();
+
+    expect(systemUi.setImmersive).toHaveBeenLastCalledWith(false);
   });
 
   it('shows the new event when another limit is reached while the screen is open', async () => {
