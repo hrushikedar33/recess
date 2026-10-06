@@ -5,4 +5,12 @@
     <string name="cover_emoji">🙃</string>
     <string name="cover_go_home">Go home</string>
     <string name="cover_open_recess">Open Recess</string>
+
+    <!-- The limit notification -->
+    <string name="notif_goals_header">Main quests</string>
+    <string name="notif_goals_to_go">%1$d to go</string>
+    <string name="notif_goals_more">+%1$d more</string>
+    <string name="notif_back_tomorrow">back tomorrow</string>
+    <string name="notif_action_open">Open break</string>
+    <string name="notif_action_home">Home</string>
 </resources>

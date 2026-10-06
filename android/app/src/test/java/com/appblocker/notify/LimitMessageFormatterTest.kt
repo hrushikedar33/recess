@@ -29,8 +29,8 @@ class LimitMessageFormatterTest {
         val message = format(event = event(until = 5_000L))
 
         assertEquals("Time's up on Instagram", message.title)
-        assertTrue(message.status.contains("Instagram is paused until at 5000"))
-        assertTrue(message.bigText.contains("Instagram is paused until at 5000"))
+        assertTrue(message.status.contains("Instagram is on timeout until at 5000"))
+        assertTrue(message.bigText.contains("Instagram is on timeout until at 5000"))
     }
 
     @Test
@@ -58,7 +58,7 @@ class LimitMessageFormatterTest {
 
         assertEquals("“Confine yourself to the present.” — Marcus Aurelius", message.quote)
         assertEquals("Your goals:\n• Goal 1\n• Goal 2", message.goals)
-        assertEquals("Take a break. Instagram is paused until at 5000.", message.status)
+        assertEquals("Instagram is on timeout until at 5000. Go touch grass.", message.status)
     }
 
     @Test
@@ -68,7 +68,7 @@ class LimitMessageFormatterTest {
         assertEquals(
             "“Confine yourself to the present.” — Marcus Aurelius\n\n" +
                 "Your goals:\n• Goal 1\n\n" +
-                "Take a break. Instagram is paused until at 1000.",
+                "Instagram is on timeout until at 1000. Go touch grass.",
             body,
         )
     }
@@ -141,5 +141,54 @@ class LimitMessageFormatterTest {
 
         assertTrue(body.contains("Marcus Aurelius"))
         assertTrue(body.contains("• Goal 1"))
+    }
+
+    // ---- the structured parts the rich notification is built from ----------------------------------
+
+    @Test
+    fun `the quote text and author are also given separately`() {
+        val message = format()
+
+        assertEquals("Confine yourself to the present.", message.quoteText)
+        assertEquals("Marcus Aurelius", message.quoteAuthor)
+    }
+
+    @Test
+    fun `every unfinished goal is listed, shortened, with no limit of five`() {
+        val message = format(goals = (1..8).map { goal(it) } + goal(9, done = true))
+
+        assertEquals((1..8).map { "Goal $it" }, message.goalTitles)
+        assertEquals(null, message.goalsNote)
+    }
+
+    @Test
+    fun `a very long goal title is shortened in the list too`() {
+        val message = format(goals = listOf(goal(1, title = "x".repeat(200))))
+
+        assertTrue(message.goalTitles.single().length <= 60)
+        assertTrue(message.goalTitles.single().endsWith("…"))
+    }
+
+    @Test
+    fun `with no goals the list is empty and there is a note to add one`() {
+        val message = format(goals = emptyList())
+
+        assertTrue(message.goalTitles.isEmpty())
+        assertTrue(message.goalsNote!!.contains("Add a goal"))
+    }
+
+    @Test
+    fun `with every goal done the list is empty and the note says so`() {
+        val message = format(goals = listOf(goal(1, done = true)))
+
+        assertTrue(message.goalTitles.isEmpty())
+        assertTrue(message.goalsNote!!.contains("All your goals are done"))
+    }
+
+    @Test
+    fun `it knows when the block ends and whether it is the daily one`() {
+        assertEquals(5_000L, format(event = event(until = 5_000L)).blockedUntilMs)
+        assertEquals(false, format().daily)
+        assertEquals(true, format(event = event(BlockReason.DAILY_LIMIT)).daily)
     }
 }

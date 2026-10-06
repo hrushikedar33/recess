@@ -6,8 +6,9 @@ in the spirit of Opal. Pick the apps, give each a **session limit**, a **cooldow
 
 When a limit is reached, Recess:
 
-1. posts **one** notification: the quote is on its first line, and expanding it shows your
-   unfinished goals and when the app opens again,
+1. posts **one** notification in the app's own look: a lime badge, the headline, the quote and a
+   live countdown pill; expanding it shows the quote card and up to three of your unfinished goals
+   ("+N more"), with **Open break** and **Home** buttons (the lock screen shows only the headline),
 2. covers the screen at once with a full-screen **cover** (quote, goals, when the app is back), and
 3. opens the **Break screen** on top of it: a full-screen React Native screen with a live countdown,
    the quote, and your goals as big rows you can **tick off right there** (each tick pops, vibrates

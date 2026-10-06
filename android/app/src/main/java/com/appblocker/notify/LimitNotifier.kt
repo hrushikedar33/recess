@@ -2,15 +2,24 @@ package com.appblocker.notify
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.appblocker.R
 
-/** Posts and cancels the "limit reached" notification, one per app. */
+/**
+ * Posts and cancels the "limit reached" notification, one per app. It uses custom collapsed and
+ * expanded layouts on the app's palette (see [LimitNotificationViews]) with a live countdown and two
+ * actions, rather than a block of plain text.
+ */
 class LimitNotifier(context: Context) {
     private val context = context.applicationContext
+    private val views = LimitNotificationViews(this.context)
 
     fun post(packageName: String, message: LimitMessage) {
         ensureChannel()
@@ -29,12 +38,20 @@ class LimitNotifier(context: Context) {
                 .setContentTitle(message.title)
                 .setContentText(message.status)
                 .build()
+        val model = LimitNotificationModel.from(message, System.currentTimeMillis(), SystemClock.elapsedRealtime())
+        val collapsed = views.collapsed(model)
         val builder =
             NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(com.appblocker.R.drawable.ic_notification)
                 .setContentTitle(message.title)
+                // Plain text for surfaces that do not draw the custom layouts (accessibility, wearables).
                 .setContentText(message.text)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(message.bigText))
+                .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                .setCustomContentView(collapsed)
+                .setCustomHeadsUpContentView(collapsed)
+                .setCustomBigContentView(views.expanded(model))
+                .addAction(0, context.getString(R.string.notif_action_open), open)
+                .addAction(0, context.getString(R.string.notif_action_home), homePending())
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setOnlyAlertOnce(true)
@@ -52,6 +69,15 @@ class LimitNotifier(context: Context) {
             Log.w(TAG, "Could not post the limit notification", e)
         }
     }
+
+    /** A tap on "Home": the system starts the launcher on our behalf, which is always allowed. */
+    private fun homePending(): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            1,
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
 
     fun cancel(packageName: String) {
         NotificationManagerCompat.from(context).cancel(packageName, NOTIFICATION_ID)
