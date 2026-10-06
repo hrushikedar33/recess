@@ -82,6 +82,28 @@ export const copy = {
     dismissNote: 'Dismiss this note',
     dismissGuidance: 'Dismiss this guidance',
   },
+  goals: {
+    title: 'Main quests',
+    intro: 'Your quests show up with a quote whenever a limit hits.',
+    placeholder: 'Add a quest: a goal or a to-do',
+    add: 'Add',
+    addA11y: 'Add goal',
+    inputA11y: 'New goal',
+    progress: (done: number, total: number) => `${done}/${total} done`,
+    allDone: 'All done. Absolute legend.',
+    empty: {
+      title: 'No quests yet',
+      body: 'Add what you would rather be doing. They show up, with a quote, when it is time to put the phone down.',
+    },
+    quotes: {
+      title: 'Fresh quotes from the internet',
+      switchLabel: 'Fresh quotes from the internet',
+      attribution: 'Inspirational quotes provided by ZenQuotes API',
+      plain: {
+        body: 'Once a day Recess can fetch new quotes. Off by default. Only the request goes out; your goals never leave this phone.',
+      },
+    },
+  },
   common: {
     gotIt: 'Got it',
     cancel: 'Cancel',

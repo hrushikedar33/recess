@@ -6,6 +6,8 @@ import { ErrorMessages } from '@core/errors/error-messages';
 import { GOALS_STORAGE_KEY } from '@core/constants/storage.keys';
 import { useGoalsViewModel } from '@features/goals/use-goals-view-model';
 
+const mockGoBack = jest.fn();
+
 // Run the "on focus" effect once on mount, without needing a navigation container.
 jest.mock('@react-navigation/native', () => {
   const { useEffect } = jest.requireActual('react');
@@ -13,6 +15,7 @@ jest.mock('@react-navigation/native', () => {
     // Mimics "run when the screen gains focus" as "run once on mount".
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useFocusEffect: (effect: () => void) => useEffect(() => effect(), []),
+    useNavigation: () => ({ goBack: mockGoBack }),
   };
 });
 
@@ -298,5 +301,15 @@ describe('useGoalsViewModel: the quotes attribution link', () => {
         await result.current.handleOpenAttribution();
       }),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('useGoalsViewModel: going back', () => {
+  it('goes back to the previous screen', () => {
+    const { result } = renderHook(() => useGoalsViewModel());
+
+    act(() => result.current.handleBack());
+
+    expect(mockGoBack).toHaveBeenCalledTimes(1);
   });
 });

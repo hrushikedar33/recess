@@ -1,17 +1,15 @@
 import React from 'react';
-import {
-  FlatList,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MAX_GOAL_TITLE_LENGTH } from '../../core/constants/app.constants';
-import { Goal } from '../../core/types/domain.types';
-import { Colors } from '../../shared/theme/colors';
+import { copy } from '../../shared/copy';
+import { palette, space, typography } from '../../shared/theme/tokens';
+import { Emoji } from '../../shared/ui/emoji';
+import { Glow } from '../../shared/ui/glow';
+import { GoalRow } from '../../shared/ui/goal-row';
+import { ProgressBar } from '../../shared/ui/progress-bar';
+import { ScreenHeader } from '../../shared/ui/screen-header';
+import { AddGoalRow } from './components/add-goal-row';
+import { QuotesCard } from './components/quotes-card';
 import { useGoalsViewModel } from './use-goals-view-model';
 
 export default function GoalsScreen() {
@@ -22,76 +20,39 @@ export default function GoalsScreen() {
     summary,
     canAdd,
     onlineQuotes,
+    onlineQuotesLoaded,
     handleToggleOnlineQuotes,
     handleOpenAttribution,
+    handleBack,
     handleChangeDraft,
     handleAdd,
     handleToggle,
     handleRemove,
   } = useGoalsViewModel();
 
-  const renderGoal = ({ item }: { item: Goal }) => (
-    <View style={styles.row}>
-      <TouchableOpacity
-        style={styles.rowMain}
-        onPress={() => handleToggle(item.id)}
-        accessibilityRole="checkbox"
-        accessibilityLabel={item.title}
-        accessibilityState={{ checked: item.done }}
-      >
-        <View style={[styles.checkbox, item.done && styles.checkboxDone]}>
-          {item.done && <Text style={styles.checkmark}>✓</Text>}
+  const progressText =
+    summary.total > 0 && summary.done === summary.total
+      ? copy.goals.allDone
+      : copy.goals.progress(summary.done, summary.total);
+
+  const header = (
+    <View style={styles.header}>
+      <Text style={styles.intro}>{copy.goals.intro}</Text>
+      {summary.total > 0 && (
+        <View style={styles.progress}>
+          <Text style={styles.progressText}>{progressText}</Text>
+          <ProgressBar
+            progress={summary.done / summary.total}
+            label={copy.goals.progress(summary.done, summary.total)}
+          />
         </View>
-        <Text style={[styles.rowTitle, item.done && styles.rowTitleDone]}>
-          {item.title}
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => handleRemove(item.id)}
-        accessibilityRole="button"
-        accessibilityLabel={`Remove goal ${item.title}`}
-      >
-        <Text style={styles.removeText}>✕</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.header}>
-        <Text style={styles.subtitle}>
-          Your goals and to-dos appear when a limit is reached.
-        </Text>
-        <Text style={styles.summary}>{summary.label}</Text>
-      </View>
-
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          value={draft}
-          onChangeText={handleChangeDraft}
-          onSubmitEditing={handleAdd}
-          placeholder="Add a goal or to-do"
-          placeholderTextColor={Colors.textDisabled}
-          maxLength={MAX_GOAL_TITLE_LENGTH}
-          returnKeyType="done"
-          accessibilityLabel="New goal"
-        />
-        <TouchableOpacity
-          style={[styles.addButton, !canAdd && styles.addButtonDisabled]}
-          onPress={handleAdd}
-          disabled={!canAdd}
-          accessibilityRole="button"
-          accessibilityLabel="Add goal"
-          accessibilityState={{ disabled: !canAdd }}
-        >
-          <Text style={[styles.addText, !canAdd && styles.addTextDisabled]}>
-            Add
-          </Text>
-        </TouchableOpacity>
-      </View>
-
+      )}
+      <AddGoalRow
+        draft={draft}
+        canAdd={canAdd}
+        onChange={handleChangeDraft}
+        onSubmit={handleAdd}
+      />
       {error !== null && (
         <Text
           style={styles.error}
@@ -101,187 +62,68 @@ export default function GoalsScreen() {
           {error}
         </Text>
       )}
+    </View>
+  );
 
-      {goals.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>No goals yet</Text>
-          <Text style={styles.emptyBody}>
-            Add what you would rather be doing. They show up, with a quote, when
-            it is time to put the phone down.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={goals}
-          keyExtractor={(item) => item.id}
-          renderItem={renderGoal}
-          contentContainerStyle={styles.list}
-          keyboardShouldPersistTaps="handled"
-        />
-      )}
-      <View style={styles.quotesCard}>
-        <View style={styles.quotesRow}>
-          <View style={styles.quotesText}>
-            <Text style={styles.quotesTitle}>
-              Fresh quotes from the internet
-            </Text>
-            <Text style={styles.quotesBody}>
-              Once a day Recess can fetch new quotes. Off by default. Only the
-              request goes out; your goals never leave this phone.
-            </Text>
-          </View>
-          <Switch
-            value={onlineQuotes}
-            onValueChange={handleToggleOnlineQuotes}
-            accessibilityLabel="Fresh quotes from the internet"
-            trackColor={{ false: Colors.border, true: Colors.accentBorder }}
-            thumbColor={onlineQuotes ? Colors.accent : Colors.textDisabled}
+  return (
+    <SafeAreaView style={styles.container}>
+      <Glow color={palette.glowPrimary} size={380} style={styles.glow} />
+      <ScreenHeader title={copy.goals.title} onBack={handleBack} />
+      <FlatList
+        data={goals}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item, index }) => (
+          <GoalRow
+            index={index}
+            title={item.title}
+            done={item.done}
+            onToggle={() => handleToggle(item.id)}
+            onRemove={() => handleRemove(item.id)}
           />
-        </View>
-        {onlineQuotes && (
-          <TouchableOpacity
-            onPress={handleOpenAttribution}
-            accessibilityRole="link"
-            accessibilityLabel="Inspirational quotes provided by ZenQuotes API"
-          >
-            <Text style={styles.attribution}>
-              Inspirational quotes provided by ZenQuotes API
-            </Text>
-          </TouchableOpacity>
         )}
-      </View>
+        ListHeaderComponent={header}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Emoji size={56}>🎯</Emoji>
+            <Text style={styles.emptyTitle}>{copy.goals.empty.title}</Text>
+            <Text style={styles.emptyBody}>{copy.goals.empty.body}</Text>
+          </View>
+        }
+        ListFooterComponent={
+          <QuotesCard
+            enabled={onlineQuotes}
+            loaded={onlineQuotesLoaded}
+            onToggle={handleToggleOnlineQuotes}
+            onOpenAttribution={handleOpenAttribution}
+          />
+        }
+        contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      />
     </SafeAreaView>
   );
 }
 
-const MIN_TOUCH = 48;
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, gap: 6 },
-  subtitle: { color: Colors.textSecondary, fontSize: 13, lineHeight: 18 },
-  summary: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-  },
-  input: {
-    flex: 1,
-    minHeight: MIN_TOUCH,
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    color: Colors.textPrimary,
-    fontSize: 15,
-  },
-  addButton: {
-    minHeight: MIN_TOUCH,
-    minWidth: 64,
-    borderRadius: 14,
-    backgroundColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  addButtonDisabled: {
-    backgroundColor: Colors.surfaceRaised,
-    borderColor: Colors.border,
-    borderWidth: 1,
-  },
-  addText: { color: Colors.textPrimary, fontWeight: '700', fontSize: 15 },
-  addTextDisabled: { color: Colors.textDisabled },
-  error: {
-    color: Colors.error,
-    fontSize: 13,
-    paddingHorizontal: 24,
-    paddingTop: 10,
-  },
-  list: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    marginBottom: 8,
-  },
-  rowMain: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: MIN_TOUCH,
-    paddingLeft: 14,
-    paddingVertical: 10,
-    gap: 12,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: Colors.textDisabled,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxDone: {
-    backgroundColor: Colors.success,
-    borderColor: Colors.success,
-  },
-  checkmark: { color: Colors.background, fontWeight: '800', fontSize: 14 },
-  rowTitle: { flex: 1, color: Colors.textPrimary, fontSize: 15 },
-  rowTitleDone: {
-    color: Colors.textSecondary,
-    textDecorationLine: 'line-through',
-  },
-  removeButton: {
-    minWidth: MIN_TOUCH,
-    minHeight: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removeText: { color: Colors.textSecondary, fontSize: 16 },
-  quotesCard: {
-    marginHorizontal: 24,
-    marginBottom: 16,
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    gap: 10,
-  },
-  quotesRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  quotesText: { flex: 1, gap: 4 },
-  quotesTitle: { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  quotesBody: { color: Colors.textSecondary, fontSize: 12, lineHeight: 17 },
-  attribution: {
-    color: Colors.accent,
-    fontSize: 12,
-    minHeight: 32,
-    textDecorationLine: 'underline',
-  },
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingBottom: 80,
-  },
+  container: { flex: 1, backgroundColor: palette.canvas, overflow: 'hidden' },
+  glow: { position: 'absolute', top: -160, right: -160 },
+  list: { paddingHorizontal: space.xl, paddingBottom: space.huge },
+  header: { gap: space.lg, paddingBottom: space.lg },
+  intro: { ...typography.body, color: palette.textSecondary, lineHeight: 22 },
+  progress: { gap: space.sm },
+  progressText: { ...typography.heading, color: palette.primary },
+  error: { ...typography.body, color: palette.danger },
+  empty: { alignItems: 'center', gap: space.sm, paddingVertical: space.xxl },
   emptyTitle: {
-    color: Colors.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
+    ...typography.title,
+    color: palette.textPrimary,
+    textAlign: 'center',
   },
   emptyBody: {
-    color: Colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.body,
+    lineHeight: 22,
+    color: palette.textSecondary,
     textAlign: 'center',
   },
 });

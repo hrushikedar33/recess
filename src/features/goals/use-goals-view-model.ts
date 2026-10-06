@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Linking } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCases } from '../../app/di';
 import { AppError } from '../../core/errors/app-error';
 import { ErrorMessages } from '../../core/errors/error-messages';
@@ -19,6 +19,7 @@ const messageFor = (error: unknown): string => {
 };
 
 export function useGoalsViewModel() {
+  const navigation = useNavigation();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +105,8 @@ export function useGoalsViewModel() {
 
   const summary = useMemo(() => summarizeGoals(goals), [goals]);
 
+  const handleBack = useCallback(() => navigation.goBack(), [navigation]);
+
   const handleOpenAttribution = useCallback(async () => {
     try {
       await Linking.openURL(QUOTES_ATTRIBUTION_URL);
@@ -126,6 +129,7 @@ export function useGoalsViewModel() {
     onlineQuotesLoaded,
     handleToggleOnlineQuotes,
     handleOpenAttribution,
+    handleBack,
     handleChangeDraft,
     handleAdd,
     handleToggle,
