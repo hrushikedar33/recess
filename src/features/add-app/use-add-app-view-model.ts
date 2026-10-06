@@ -113,6 +113,7 @@ export function useAddAppViewModel() {
     saving,
     handleSave,
     handleBack: () => setSelectedApp(null),
+    handleClose: () => navigation.goBack(),
     handleSelectApp: setSelectedApp,
     presetLimits: PRESET_LIMITS,
     presetCooldowns: PRESET_COOLDOWNS,

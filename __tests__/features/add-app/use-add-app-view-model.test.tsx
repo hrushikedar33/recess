@@ -133,3 +133,28 @@ describe('useAddAppViewModel: limits', () => {
     expect(sent[0].dailyLimitMinutes).toBe(60);
   });
 });
+
+describe('useAddAppViewModel: leaving', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    mockNavigation.goBack.mockReset();
+  });
+
+  it('closes the screen from the app list', async () => {
+    const { result } = await renderAddApp();
+
+    act(() => result.current.handleClose());
+
+    expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes back to the app list, not out of the screen, from the limits step', async () => {
+    const { result } = await renderAddApp();
+    expect(result.current.selectedApp).not.toBeNull();
+
+    act(() => result.current.handleBack());
+
+    expect(result.current.selectedApp).toBeNull();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+});

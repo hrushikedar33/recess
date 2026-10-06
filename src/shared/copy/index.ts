@@ -104,6 +104,43 @@ export const copy = {
       },
     },
   },
+  addApp: {
+    pickTitle: 'Pick an app',
+    searchPlaceholder: 'Search your apps',
+    searchA11y: 'Search apps',
+    loading: 'Finding your apps…',
+    noMatch: (query: string) => `No apps match "${query}"`,
+    rowA11y: (appName: string) => `Set limits for ${appName}`,
+    configTitle: 'Set the rules',
+    session: {
+      title: 'How long per sesh',
+      desc: (minutes: number) =>
+        `Time's up after ${minutes} minutes in one go.`,
+    },
+    cooldown: {
+      title: 'Touch-grass break',
+      desc: (minutes: number) =>
+        `Then you wait ${minutes} minutes before it opens again.`,
+    },
+    daily: {
+      title: 'Daily budget',
+      noCap: 'No cap',
+      noCapA11y: 'No daily budget',
+      desc: (minutes: number) =>
+        `After ${minutes} minutes in a day it stays closed until midnight.`,
+      descNoCap: 'No total for the day: only the session limit applies.',
+    },
+    minutesA11y: (minutes: number) =>
+      minutes === 1 ? '1 minute' : `${minutes} minutes`,
+    summary: (session: number, cooldown: number, daily: number | null) =>
+      `${session} min per sesh · ${cooldown} min break · ${
+        daily === null ? 'no cap' : `${daily} min a day`
+      }`,
+    save: 'Lock it in',
+    saving: 'Locking it in…',
+    saveA11y: 'Save these limits',
+    back: 'Go back to the app list',
+  },
   common: {
     gotIt: 'Got it',
     cancel: 'Cancel',
