@@ -23,7 +23,9 @@ const xml = fs.readFileSync(
 );
 
 const nativeColors: Record<string, string> = {};
-for (const match of xml.matchAll(/<color name="(\w+)">(#[0-9A-Fa-f]{6,8})<\/color>/g)) {
+for (const match of xml.matchAll(
+  /<color name="(\w+)">(#[0-9A-Fa-f]{6,8})<\/color>/g,
+)) {
   nativeColors[match[1]] = match[2].toUpperCase();
 }
 
