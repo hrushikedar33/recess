@@ -22,6 +22,10 @@ Object.assign(NativeModules, {
     getInstalledApps: jest.fn(async () => []),
     getAppIcon: jest.fn(async () => null),
   },
+  SystemUiModule: {
+    setImmersive: jest.fn(async () => undefined),
+    goHome: jest.fn(async () => undefined),
+  },
   MonitorConfigModule: {
     setMonitoringEnabled: jest.fn(async () => undefined),
     getMonitorStatus: jest.fn(async () => ({

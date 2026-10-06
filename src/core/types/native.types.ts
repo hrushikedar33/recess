@@ -7,6 +7,13 @@ export interface UsageStatsNativeModule {
   requestIgnoreBatteryOptimization(): void;
 }
 
+export interface SystemUiNativeModule {
+  /** Hides (true) or shows (false) the status and navigation bars of the current screen. */
+  setImmersive(enabled: boolean): Promise<void>;
+  /** Starts the phone's home screen. Works because it runs from the foreground screen. */
+  goHome(): Promise<void>;
+}
+
 export interface AppListNativeModule {
   getInstalledApps(): Promise<import('./domain.types').AppInfo[]>;
   getAppIcon(packageName: string): Promise<string | null>;

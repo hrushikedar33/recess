@@ -12,6 +12,7 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.soloader.SoLoader
 import com.appblocker.modules.applist.AppListPackage
 import com.appblocker.modules.monitor.MonitorPackage
+import com.appblocker.modules.systemui.SystemUiPackage
 import com.appblocker.modules.usagestats.UsageStatsPackage
 
 class MainApplication : Application(), ReactApplication {
@@ -23,6 +24,7 @@ class MainApplication : Application(), ReactApplication {
                     add(UsageStatsPackage())
                     add(AppListPackage())
                     add(MonitorPackage())
+                    add(SystemUiPackage())
                 }
 
             override fun getJSMainModuleName(): String = "index"
