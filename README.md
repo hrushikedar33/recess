@@ -83,6 +83,7 @@ Being honest about the limits is part of the design:
 | `RECEIVE_BOOT_COMPLETED` | Start the monitor again after a reboot or an update |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Ask (not force) to be excluded from battery optimisation |
 | `USE_FULL_SCREEN_INTENT` | Show the notification full screen where Android allows it |
+| `VIBRATE` | A short tap when you flip a switch or tick a goal off |
 | `INTERNET` | **Only** for the optional online quotes (below). Nothing else uses the network |
 
 ## Quotes and goals
