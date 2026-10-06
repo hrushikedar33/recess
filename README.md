@@ -107,6 +107,28 @@ Being honest about the limits is part of the design:
 - The notification hides the quote and goals on the lock screen (private version shows only the
   headline).
 
+## Look, motion and tone
+
+The whole app is built from one small design system, so every screen feels the same:
+
+- **Tokens** (`src/shared/theme/tokens.ts`): near-black canvas, acid-lime for focus/ON/progress,
+  bubblegum-pink for blocked and limit moments, coral red only for danger; a 4-point spacing scale,
+  three corner radii and a type scale. Screens never use raw colours or ad-hoc spacing. The native
+  surfaces (cover, notification) use the same colours from `res/values/colors.xml`, and a Jest test
+  fails if the two ever differ. Every text/background pairing is contrast-checked (WCAG AA).
+- **Motion** (`src/shared/motion`): built on React Native's own `Animated`, no extra library. Press
+  squish, fade-and-slide entrances (staggered in lists), a pulsing "locked in" dot, goal-tick pop
+  with confetti and a short vibration. Everything honours the system **reduce motion** setting:
+  things appear in their final state and nothing loops.
+- **Building blocks** (`src/shared/ui`): `PressableScale`, `Card`, `Chip`, `Toggle`, `GoalRow`,
+  `Pill`, `ProgressBar`, `ScreenHeader`, `Glow`, `Emoji`. Each control needs an accessible name
+  (a test walks every screen and fails on a control named only by a glyph) and has a 48 dp target.
+- **Tone** (`src/shared/copy/index.ts`): all screen text lives in one file. Headlines, buttons and
+  empty states are playful ("Locked in", "Off the grid", "Main quests", "touch grass"); anything the
+  user has to *act on* or that explains a failure sits under a `plain` group in ordinary words, and a
+  test keeps slang out of it. **To dial the slang up or down, edit that one file** (the notification
+  and cover wording is in `LimitMessageFormatter.kt` and `res/values/strings.xml`).
+
 ## Getting started
 
 1. `npm install`
