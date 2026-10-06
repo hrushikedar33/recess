@@ -41,6 +41,47 @@ export const copy = {
     close: 'Close',
     closeA11y: 'Close this screen',
   },
+  home: {
+    title: 'Recess',
+    tagline: 'touch grass, not feeds',
+    switchLabel: 'Monitoring',
+    on: {
+      title: 'Locked in',
+      detail: (count: number) =>
+        count === 0
+          ? 'Nothing to watch yet. Add an app.'
+          : count === 1
+          ? 'Watching 1 app'
+          : `Watching ${count} apps`,
+    },
+    off: {
+      title: 'Off the grid',
+      detail: 'Flip it on and Recess starts watching.',
+    },
+    busy: 'One sec…',
+    goals: {
+      title: 'Main quests',
+      empty: 'No quests yet. Tap to add one.',
+      progress: (done: number, total: number) => `${done}/${total} done`,
+      allDone: 'All done. Absolute legend.',
+      a11y: (summary: string) => `Main quests. ${summary}`,
+    },
+    apps: { title: 'On the clock' },
+    empty: {
+      title: 'Nothing on the clock yet',
+      body: 'Add the apps that eat your day and we’ll put them on a timer.',
+    },
+    add: 'Add an app',
+    addA11y: 'Add an app to limit',
+    appSwitch: (appName: string) => `Limit ${appName}`,
+    remove: (appName: string) => `Stop limiting ${appName}`,
+    settings: 'Open settings',
+    settingsA11y: 'Open Recess settings',
+    gotIt: 'Got it',
+    fixIt: 'Fix it',
+    dismissNote: 'Dismiss this note',
+    dismissGuidance: 'Dismiss this guidance',
+  },
   common: {
     gotIt: 'Got it',
     cancel: 'Cancel',

@@ -1,18 +1,18 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Switch,
-  StatusBar,
-  Image,
-} from 'react-native';
+import { FlatList, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlockedApp } from '../../core/types/domain.types';
-import { Colors } from '../../shared/theme/colors';
-import { describeLimits } from './limit-summary';
+import { copy } from '../../shared/copy';
+import { palette, radius, space, typography } from '../../shared/theme/tokens';
+import { Glow } from '../../shared/ui/glow';
+import { Pill } from '../../shared/ui/pill';
+import { PressableScale } from '../../shared/ui/pressable-scale';
+import { AppCard } from './components/app-card';
+import { EmptyApps } from './components/empty-apps';
+import { GoalsCard } from './components/goals-card';
+import { HealthStrip } from './components/health-strip';
+import { NoticeCard } from './components/notice-card';
+import { StatusCard } from './components/status-card';
 import { useHomeViewModel } from './use-home-view-model';
 
 export default function HomeScreen() {
@@ -37,468 +37,159 @@ export default function HomeScreen() {
     handleAddApp,
   } = useHomeViewModel();
 
-  const renderApp = ({ item }: { item: BlockedApp }) => (
-    <View style={styles.card}>
-      <View style={styles.cardLeft}>
-        {item.iconBase64 ? (
-          <Image
-            source={{ uri: item.iconBase64 }}
-            style={styles.appIconImage}
-          />
-        ) : (
-          <View style={styles.appIconPlaceholder}>
-            <Text style={styles.appIconText}>
-              {item.appName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )}
-        <View style={styles.appInfo}>
-          <Text style={styles.appName}>{item.appName}</Text>
-          <Text style={styles.appMeta}>{describeLimits(item)}</Text>
-        </View>
+  const activeCount = blockedApps.filter((app) => app.isActive).length;
+
+  const header = (
+    <View style={styles.header}>
+      <View style={styles.hero}>
+        <Text style={styles.wordmark} accessibilityRole="header">
+          {copy.home.title}
+        </Text>
+        <Text style={styles.tagline}>{copy.home.tagline}</Text>
       </View>
-      <View style={styles.cardRight}>
-        <Switch
-          value={item.isActive}
-          onValueChange={() => handleToggleApp(item.packageName)}
-          trackColor={{ false: '#2a2a2a', true: '#FF475740' }}
-          thumbColor={item.isActive ? '#FF4757' : '#555'}
+
+      <StatusCard
+        enabled={trackerEnabled}
+        busy={trackerBusy}
+        activeCount={activeCount}
+        onToggle={handleToggleTracker}
+      />
+      <HealthStrip
+        health={monitorHealth}
+        onOpenSettings={handleOpenAppSettings}
+      />
+
+      {interruptionNote !== null && (
+        <NoticeCard
+          body={interruptionNote}
+          actions={[
+            {
+              label: copy.home.gotIt,
+              accessibilityLabel: copy.home.dismissNote,
+              onPress: handleDismissInterruption,
+            },
+          ]}
         />
-        <TouchableOpacity
-          onPress={() => handleRemoveApp(item)}
-          style={styles.removeBtn}
-        >
-          <Text style={styles.removeBtnText}>✕</Text>
-        </TouchableOpacity>
-      </View>
+      )}
+      {oemGuidance !== null && (
+        <NoticeCard
+          title={oemGuidance.title}
+          body={oemGuidance.steps}
+          actions={[
+            {
+              label: copy.home.settings,
+              accessibilityLabel: copy.home.settingsA11y,
+              onPress: handleOpenAppSettings,
+            },
+            {
+              label: copy.home.gotIt,
+              accessibilityLabel: copy.home.dismissGuidance,
+              onPress: handleDismissOemGuidance,
+            },
+          ]}
+        />
+      )}
+      {shouldShowPermissionBanner && (
+        <NoticeCard
+          body={permissionBannerText}
+          actions={[
+            {
+              label: copy.home.fixIt,
+              accessibilityLabel: permissionBannerText,
+              onPress: handleRequestPermission,
+            },
+          ]}
+        />
+      )}
+
+      <GoalsCard
+        done={goalsSummary.done}
+        total={goalsSummary.total}
+        onPress={handleOpenGoals}
+      />
+
+      {blockedApps.length > 0 && (
+        <View style={styles.sectionRow}>
+          <Text style={styles.section} accessibilityRole="header">
+            {copy.home.apps.title}
+          </Text>
+          <Pill label={String(blockedApps.length)} tone="primary" />
+        </View>
+      )}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
+      <StatusBar barStyle="light-content" backgroundColor={palette.canvas} />
+      <Glow
+        color={trackerEnabled ? palette.glowPrimary : palette.glowBlocked}
+        size={420}
+        style={styles.glow}
+      />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Recess</Text>
-          <Text style={styles.headerSub}>Take back your time</Text>
-        </View>
-        <TouchableOpacity
-          style={[
-            styles.trackerToggle,
-            trackerEnabled && styles.trackerToggleActive,
-            trackerBusy && styles.trackerToggleDisabled,
-          ]}
-          onPress={handleToggleTracker}
-          disabled={trackerBusy}
-        >
-          <View style={[styles.dot, trackerEnabled && styles.dotActive]} />
-          <Text
-            style={[
-              styles.trackerLabel,
-              trackerEnabled && styles.trackerLabelActive,
-            ]}
-          >
-            {trackerEnabled ? 'ON' : 'OFF'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Monitoring status */}
-      {monitorHealth.tone !== 'off' && (
-        <View
-          style={styles.statusRow}
-          accessible
-          accessibilityLabel={[
-            monitorHealth.headline,
-            ...monitorHealth.details,
-          ].join('. ')}
-        >
-          <View
-            style={[
-              styles.statusDot,
-              monitorHealth.tone === 'ok'
-                ? styles.statusDotOk
-                : styles.statusDotWarning,
-            ]}
+      <FlatList
+        data={blockedApps}
+        keyExtractor={(item: BlockedApp) => item.packageName}
+        renderItem={({ item, index }) => (
+          <AppCard
+            app={item}
+            index={index}
+            onToggle={() => handleToggleApp(item.packageName)}
+            onRemove={() => handleRemoveApp(item)}
           />
-          <View style={styles.statusText}>
-            <Text style={styles.statusHeadline}>{monitorHealth.headline}</Text>
-            {monitorHealth.details.map((detail) => (
-              <Text key={detail} style={styles.statusDetail}>
-                {detail}
-              </Text>
-            ))}
-            {monitorHealth.opensSettings && (
-              <TouchableOpacity
-                style={styles.noticeButton}
-                onPress={handleOpenAppSettings}
-                accessibilityRole="button"
-                accessibilityLabel="Open Recess settings"
-              >
-                <Text style={styles.noticeButtonText}>Open settings</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      )}
+        )}
+        ListHeaderComponent={header}
+        ListEmptyComponent={<EmptyApps />}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+      />
 
-      {/* Interruption note */}
-      {interruptionNote !== null && (
-        <View style={styles.noticeCard}>
-          <Text style={styles.noticeBody}>{interruptionNote}</Text>
-          <TouchableOpacity
-            style={styles.noticeButton}
-            onPress={handleDismissInterruption}
-            accessibilityRole="button"
-            accessibilityLabel="Dismiss this note"
-          >
-            <Text style={styles.noticeButtonText}>Got it</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Keep-alive guidance for phones that stop background apps */}
-      {oemGuidance !== null && (
-        <View style={styles.noticeCard}>
-          <Text style={styles.noticeTitle}>{oemGuidance.title}</Text>
-          <Text style={styles.noticeBody}>{oemGuidance.steps}</Text>
-          <View style={styles.noticeButtons}>
-            <TouchableOpacity
-              style={styles.noticeButton}
-              onPress={handleOpenAppSettings}
-              accessibilityRole="button"
-              accessibilityLabel="Open Recess settings"
-            >
-              <Text style={styles.noticeButtonText}>Open settings</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.noticeButton}
-              onPress={handleDismissOemGuidance}
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss this guidance"
-            >
-              <Text style={styles.noticeButtonText}>Got it</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* Permission Banner */}
-      {shouldShowPermissionBanner && (
-        <TouchableOpacity
-          style={styles.permBanner}
-          onPress={handleRequestPermission}
+      <View style={styles.footer} pointerEvents="box-none">
+        <PressableScale
+          accessibilityLabel={copy.home.addA11y}
+          onPress={handleAddApp}
+          style={styles.fab}
         >
-          <Text style={styles.permBannerText}>{permissionBannerText}</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Goals */}
-      <TouchableOpacity
-        style={styles.goalsCard}
-        onPress={handleOpenGoals}
-        accessibilityRole="button"
-        accessibilityLabel={`Goals and to-dos. ${goalsSummary.label}`}
-      >
-        <View>
-          <Text style={styles.goalsTitle}>Goals & To-dos</Text>
-          <Text style={styles.goalsMeta}>{goalsSummary.label}</Text>
-        </View>
-        <Text style={styles.goalsChevron}>›</Text>
-      </TouchableOpacity>
-
-      {/* App List */}
-      {blockedApps.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📵</Text>
-          <Text style={styles.emptyTitle}>No apps blocked yet</Text>
-          <Text style={styles.emptyBody}>
-            Add apps you want to limit and set a daily usage cap.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={blockedApps}
-          keyExtractor={(item) => item.packageName}
-          renderItem={renderApp}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-
-      {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={handleAddApp}>
-        <Text style={styles.fabText}>+ Add App</Text>
-      </TouchableOpacity>
+          <Text style={styles.fabText}>{`+  ${copy.home.add}`}</Text>
+        </PressableScale>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0a0a0a',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-  },
-  headerSub: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 2,
-  },
-  trackerToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    gap: 6,
-  },
-  trackerToggleActive: {
-    borderColor: '#FF475760',
-    backgroundColor: '#FF47571a',
-  },
-  trackerToggleDisabled: {
-    opacity: 0.6,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#555',
-  },
-  dotActive: {
-    backgroundColor: '#FF4757',
-  },
-  trackerLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#555',
-    letterSpacing: 1,
-  },
-  trackerLabelActive: {
-    color: '#FF4757',
-  },
-  permBanner: {
-    marginHorizontal: 24,
-    marginBottom: 16,
-    backgroundColor: '#FF47571a',
-    borderWidth: 1,
-    borderColor: '#FF475740',
-    borderRadius: 12,
-    padding: 14,
-  },
-  permBannerText: {
-    color: '#FF8B94',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginHorizontal: 24,
-    marginBottom: 12,
-    gap: 10,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginTop: 5,
-  },
-  statusDotOk: { backgroundColor: Colors.success },
-  statusDotWarning: { backgroundColor: Colors.accent },
-  statusText: { flex: 1, gap: 2 },
-  statusHeadline: {
-    color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  statusDetail: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  noticeCard: {
-    marginHorizontal: 24,
-    marginBottom: 12,
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    gap: 8,
-  },
-  noticeTitle: {
-    color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  noticeBody: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  noticeButtons: { flexDirection: 'row', gap: 8 },
-  noticeButton: {
-    minHeight: 44,
-    minWidth: 44,
-    alignSelf: 'flex-start',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  noticeButtonText: {
-    color: Colors.accent,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  goalsCard: {
-    marginHorizontal: 24,
-    marginBottom: 16,
-    minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.surface,
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  goalsTitle: {
-    color: Colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  goalsMeta: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  goalsChevron: {
-    color: Colors.textSecondary,
-    fontSize: 22,
-  },
+  container: { flex: 1, backgroundColor: palette.canvas, overflow: 'hidden' },
+  glow: { position: 'absolute', top: -180, right: -180 },
   list: {
-    paddingHorizontal: 24,
-    paddingBottom: 100,
+    paddingHorizontal: space.xl,
+    paddingBottom: 128,
   },
-  card: {
+  header: { gap: space.lg, paddingTop: space.lg, paddingBottom: space.md },
+  hero: { gap: 2, paddingBottom: space.sm },
+  wordmark: { ...typography.display, color: palette.textPrimary },
+  tagline: { ...typography.body, fontSize: 16, color: palette.textSecondary },
+  sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#141414',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#222',
+    gap: space.sm,
+    marginTop: space.sm,
   },
-  cardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-  appIconPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#222',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appIconImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-  },
-  appIconText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FF4757',
-  },
-  appInfo: {
-    flex: 1,
-  },
-  appName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  appMeta: {
-    fontSize: 12,
-    color: '#555',
-    marginTop: 3,
-  },
-  cardRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  removeBtn: {
-    padding: 4,
-  },
-  removeBtnText: {
-    color: '#444',
-    fontSize: 14,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingBottom: 80,
-  },
-  emptyIcon: {
-    fontSize: 56,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyBody: {
-    fontSize: 14,
-    color: '#555',
-    textAlign: 'center',
-    lineHeight: 20,
+  section: { ...typography.title, fontSize: 22, color: palette.textPrimary },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: space.xl,
+    paddingBottom: space.xl,
   },
   fab: {
-    position: 'absolute',
-    bottom: 32,
-    left: 24,
-    right: 24,
-    backgroundColor: '#FF4757',
-    borderRadius: 16,
-    paddingVertical: 16,
+    minHeight: 56,
+    borderRadius: radius.pill,
+    backgroundColor: palette.primary,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  fabText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-    letterSpacing: 0.3,
-  },
+  fabText: { ...typography.heading, color: palette.onPrimary },
 });
