@@ -27,6 +27,7 @@ class MonitorTicker(
     private val sink: ActionSink,
     private val clock: () -> Long,
     private val onError: (String, Throwable) -> Unit = { _, _ -> },
+    private val coordinator: TakeoverCoordinator = TakeoverCoordinator(),
 ) {
     private val persistPolicy = PersistPolicy()
     private val ejectThrottle = EjectThrottle()
@@ -84,6 +85,7 @@ class MonitorTicker(
 
         ejectThrottle.noteForeground(foreground)
         reportForeground(foreground)
+        coordinator.onForeground(foreground)
         // Ticked even when nothing was polled, so a pending block end is never missed.
         engine.tick(nowMs, foreground, rules).forEach { perform(it, nowMs) }
         persistIfDue(nowMs)
@@ -145,6 +147,16 @@ class MonitorTicker(
         } catch (e: Exception) {
             onError("Could not cover the blocked app", e)
         }
+        val plan = coordinator.onBlockedAppInFront(packageName, nowMs)
+        plan.launchBreakAfterMs?.let { delayMs ->
+            try {
+                sink.launchBreak(delayMs)
+            } catch (e: Exception) {
+                onError("Could not start the Break screen", e)
+            }
+        }
+        // While the Break screen is on its way a HOME would land on top of it, so it waits.
+        if (!plan.allowHome) return
         val verdict = ejectThrottle.onEject(packageName, nowMs)
         if (verdict.ineffective) lastIneffectiveEjectMs = nowMs
         if (verdict.send) sink.ejectToHome(packageName)

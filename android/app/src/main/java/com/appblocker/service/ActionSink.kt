@@ -16,6 +16,12 @@ interface ActionSink {
      */
     fun blockedAppInFront(packageName: String)
 
+    /**
+     * Starts the Break screen after [delayMs]. It is a real screen the user can use (tick goals, see
+     * the countdown), and Android lets a background service start it while the cover is visible.
+     */
+    fun launchBreak(delayMs: Long)
+
     /** The app in front changed (null: nothing, e.g. screen off). Lets the cover lift once the blocked app is left. */
     fun foregroundChanged(packageName: String?)
 

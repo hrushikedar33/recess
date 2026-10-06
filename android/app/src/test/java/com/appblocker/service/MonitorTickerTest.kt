@@ -40,6 +40,13 @@ private class RecordingSink : ActionSink {
     val foregrounds = mutableListOf<String?>()
     var failOnCover = false
     var failOnForegroundReport = false
+    val breakLaunches = mutableListOf<Long>()
+    var failOnLaunch = false
+
+    override fun launchBreak(delayMs: Long) {
+        if (failOnLaunch) throw IllegalStateException("cannot start the Break screen")
+        breakLaunches += delayMs
+    }
 
     override fun blockedAppInFront(packageName: String) {
         if (failOnCover) throw IllegalStateException("cannot draw the cover")
@@ -214,24 +221,25 @@ class MonitorTickerTest {
     // ---- enforcing -------------------------------------------------------------------------
 
     @Test
-    fun `hitting the limit ejects once and reports the limit once`() {
+    fun `hitting the limit reports it once and starts the Break screen, without sending home yet`() {
         enableWithInstagramRule()
 
         run(61)
 
-        assertEquals(listOf(INSTAGRAM), sink.ejected)
         assertEquals(1, sink.limits.size)
+        assertEquals(listOf(300L), sink.breakLaunches)
+        assertTrue(sink.ejected.isEmpty())
     }
 
     @Test
-    fun `ten more seconds in the blocked app eject at the throttled pace, then back off, and never report again`() {
+    fun `if the Break screen never arrives, going home takes over, backs off when refused, and nothing is reported twice`() {
         enableWithInstagramRule()
         run(61)
 
-        run(10)
+        run(30)
 
-        // One every 2 s while it might work; the fifth is unanswered, so the phone is refusing and
-        // further tries become rare (they only spam the system log).
+        // Not before the Break launches have had their chance (4 s), then one every 2 s; the fifth is
+        // unanswered, so the phone is refusing and further tries become rare (they only fill the log).
         assertEquals(5, sink.ejected.size)
         assertEquals(1, sink.limits.size)
     }
@@ -271,15 +279,77 @@ class MonitorTickerTest {
     }
 
     @Test
-    fun `a cover that cannot be drawn does not stop the attempt to go home`() {
+    fun `a cover that cannot be drawn does not stop the Break screen from being started`() {
         enableWithInstagramRule()
         sink.failOnCover = true
 
         run(61)
 
-        assertEquals(listOf(INSTAGRAM), sink.ejected)
+        assertEquals(listOf(300L), sink.breakLaunches)
         assertEquals(1, sink.limits.size)
         assertTrue(errors.isNotEmpty())
+    }
+
+    // ---- the Break screen takeover -------------------------------------------------------------
+
+    @Test
+    fun `a retry of the Break screen is made once if the blocked app is still in front`() {
+        enableWithInstagramRule()
+        run(61)
+
+        run(10)
+
+        assertEquals(listOf(300L, 0L), sink.breakLaunches)
+    }
+
+    @Test
+    fun `going home is held back for the first seconds, then allowed`() {
+        enableWithInstagramRule()
+        run(61)
+
+        run(3)
+        assertTrue(sink.ejected.isEmpty())
+
+        run(2)
+        assertEquals(1, sink.ejected.size)
+    }
+
+    @Test
+    fun `a home attempt never lands on top of the Break screen once it is in front`() {
+        enableWithInstagramRule()
+        run(61)
+        foreground = "com.appblocker" // the Break screen arrived
+
+        run(20)
+
+        assertTrue(sink.ejected.isEmpty())
+        assertEquals(listOf(300L), sink.breakLaunches)
+    }
+
+    @Test
+    fun `opening the blocked app again starts the Break screen again`() {
+        enableWithInstagramRule()
+        run(61)
+        foreground = "com.oneplus.launcher"
+        run(2)
+        foreground = INSTAGRAM
+
+        run(1)
+
+        assertEquals(listOf(300L, 300L), sink.breakLaunches)
+    }
+
+    @Test
+    fun `a Break launch that fails is reported, and going home still takes over later`() {
+        enableWithInstagramRule()
+        sink.failOnLaunch = true
+
+        run(61)
+        run(10)
+
+        assertTrue(errors.isNotEmpty())
+        assertTrue(sink.ejected.isNotEmpty())
+        assertEquals(1, sink.limits.size)
     }
 
     @Test
@@ -350,7 +420,10 @@ class MonitorTickerTest {
         run(3, using = restarted)
 
         assertEquals(1, sink.limits.size)
-        assertEquals(3, sink.ejected.size)
+        // The restarted monitor treats the blocked app being in front as a fresh episode: the
+        // first launch, and its one retry two seconds later.
+        assertEquals(listOf(300L, 300L, 0L), sink.breakLaunches)
+        assertTrue(sink.ejected.isEmpty())
     }
 
     // ---- when things go wrong --------------------------------------------------------------
@@ -374,6 +447,7 @@ class MonitorTickerTest {
         sink.failOnEject = true
 
         run(61)
+        run(10) // long enough for the first home attempt to be made, and to fail
 
         assertEquals(1, sink.limits.size)
         assertNotNull(prefs.engineState().apps[INSTAGRAM]?.blockedUntilMs)

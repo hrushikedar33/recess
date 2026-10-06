@@ -2,6 +2,8 @@ package com.appblocker.service
 
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.appblocker.engine.EngineAction
 import com.appblocker.notify.BreakIntents
@@ -18,6 +20,7 @@ class AndroidActionSink(
     private val takeover: TakeoverOverlay,
 ) : ActionSink {
     private val context = context.applicationContext
+    private val main = Handler(Looper.getMainLooper())
 
     private val presenter =
         LimitPresenter(
@@ -49,6 +52,25 @@ class AndroidActionSink(
     }
 
     override fun foregroundChanged(packageName: String?) = takeover.onForeground(packageName)
+
+    /**
+     * Starts the Break screen on the main thread after [delayMs], giving the cover window time to be
+     * drawn first: the phone only accepts a background activity start while a window of ours is
+     * visible (its log says BAL_ALLOW_NON_APP_VISIBLE_WINDOW when that is what let it through).
+     */
+    override fun launchBreak(delayMs: Long) {
+        main.postDelayed(
+            {
+                try {
+                    context.startActivity(BreakIntents.intent(context))
+                    Log.i("Recess", "Break screen requested")
+                } catch (e: Exception) {
+                    Log.w("Recess", "Could not start the Break screen", e)
+                }
+            },
+            delayMs,
+        )
+    }
 
     /**
      * Once per block: one notification and one full-screen takeover, both showing the same quote
