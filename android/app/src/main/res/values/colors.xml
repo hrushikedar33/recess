@@ -1,3 +1,16 @@
 <resources>
     <color name="ic_launcher_background">#0A0A0A</color>
+
+    <!-- Mirrors src/shared/theme/tokens.ts (a Jest test keeps the two in step): change both together. -->
+    <color name="recess_canvas">#0A0A0C</color>
+    <color name="recess_surface">#141418</color>
+    <color name="recess_raised">#1C1C22</color>
+    <color name="recess_border">#26262E</color>
+    <color name="recess_text_primary">#FFFFFF</color>
+    <color name="recess_text_secondary">#9A9AA5</color>
+    <color name="recess_primary">#D4FF3A</color>
+    <color name="recess_on_primary">#0A0A0C</color>
+    <color name="recess_blocked">#FF5C8A</color>
+    <color name="recess_on_blocked">#0A0A0C</color>
+    <color name="recess_danger">#FF4757</color>
 </resources>

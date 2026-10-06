@@ -8,13 +8,15 @@ When a limit is reached, Recess:
 
 1. posts **one** notification: the quote is on its first line, and expanding it shows your
    unfinished goals and when the app opens again,
-2. covers the screen with a full-screen **window** showing the quote, your goals and when the app
-   opens again, and tries to send the app to the home screen, and
-3. **keeps the app unusable for the whole cooldown**: every time the paused app comes to the front
-   again (from Recents, a notification, anywhere), the same window covers it within about a second.
-   It lifts as soon as you leave the app (for example with the Home button), when the cooldown
-   ends, or when you turn Recess off. Its **Open Recess** button opens the Break screen (live
-   countdown, goals you can tick off), which the notification opens too.
+2. covers the screen at once with a full-screen **cover** (quote, goals, when the app is back), and
+3. opens the **Break screen** on top of it: a full-screen React Native screen with a live countdown,
+   the quote, and your goals as big rows you can **tick off right there** (each tick pops, vibrates
+   and throws a little confetti). **Okay, I'm out** takes you to the real home screen.
+
+The paused app stays unusable for the whole cooldown: every time you open it again (from Recents, a
+notification, anywhere) the same cover and Break screen come back within about a second. The cover
+lifts as soon as you are in Recess or on the home screen, when the cooldown ends, or when you turn
+Recess off.
 
 ## How it works
 
@@ -215,12 +217,15 @@ buttons therefore launch first and remove the window afterwards.)
 network at the moment a limit is hit. Fetched quotes are treated as hostile input (allowlist,
 double validation, kill switch).
 
-**AD7 - One notification per limit event, and a takeover that is a window, not an activity.** Fixed
-id, replaced not stacked; reopening a blocked app during the cooldown never posts again. Since
-Android 10 a background service is often refused when it starts an *activity*, and a full-screen
-notification needs a permission most people never grant, so the takeover is a plain overlay window
-added by the service (it needs only the overlay permission, and always has a Go home button). The
-Break screen is the fallback when a window cannot be drawn, and what the notification opens.
+**AD7 - One notification per limit event, and a takeover in two layers.** Fixed id, replaced not
+stacked; reopening a blocked app during the cooldown never posts again. Since Android 10 a background
+service is often refused when it starts an *activity*, but the phone accepts one while a window of
+ours is visible. So the first layer is a plain overlay window added by the service (instant, only
+needs the overlay permission, full-bleed, with Go home / Open Recess buttons); the second is the
+real Break screen, started ~300 ms later while the cover is up, where goals can be ticked. A
+`TakeoverCoordinator` plans each episode (one continuous stretch of the paused app in front): cover,
+Break launch, one retry, and only then a plain home-screen attempt as a last resort, so a HOME can
+never land on top of the Break screen.
 
 **AD8 - JS keeps AsyncStorage, native keeps a mirror.** Every change to rules or goals is pushed to
 native, and everything is pushed again on each app start (which also migrates old installs). Native
