@@ -129,6 +129,28 @@ The whole app is built from one small design system, so every screen feels the s
   test keeps slang out of it. **To dial the slang up or down, edit that one file** (the notification
   and cover wording is in `LimitMessageFormatter.kt` and `res/values/strings.xml`).
 
+## Compatibility
+
+| | |
+|---|---|
+| Android versions | 5.0 (API 21) and up; built against Android 15 (API 35) |
+| CPUs | arm64-v8a, armeabi-v7a, x86, x86_64 |
+| Verified on a device | OnePlus CPH2447, Android 16 (ColorOS); Samsung SM-S948B, **Android 17 (API 37), One UI 9.0**: installs, starts, runs the monitor as a foreground service, no crashes or ANRs |
+| Verified by Android lint only | Android 5.0-8.x (no device or emulator was available): `./gradlew lintRelease` reports 0 errors; two calls that need Android 6 (`setAndAllowWhileIdle`, `canDrawOverlays`) are guarded |
+
+Things to know:
+
+- **Android 17** keeps this app unchanged: its target-API-37 changes (for example the stricter
+  background-launch rules for `IntentSender`) apply only after `targetSdk` is raised to 37, which has
+  not been done. Android 17 also limits an app's memory by device RAM; Recess uses about 120-170 MB.
+- **16 KB memory pages** (some newer phones): React Native 0.73's native libraries are built for
+  4 KB pages, so Android would run Recess in compatibility mode on such a phone. The phones tested
+  use 4 KB pages. Full support needs a newer React Native (0.77 or later).
+- **Phone-maker battery managers** (Samsung "sleeping apps", ColorOS, MIUI...) can stop background
+  apps. Home shows the steps for the maker it detects.
+- It only ever covers an app **you added to the list, while that app is in front**. Settings, the
+  phone app, the lock screen and emergency calls are never covered, and the Home button always works.
+
 ## Getting started
 
 1. `npm install`
@@ -182,6 +204,7 @@ interfaces (CVE-2025-11953); do not change `--host`. Release builds never contac
 - `npm test` - Jest (JS unit tests)
 - `npm run typecheck` - TypeScript without emitting files
 - `(cd android && ./gradlew testDebugUnitTest)` - Kotlin unit tests (needs `ANDROID_HOME`)
+- `(cd android && ./gradlew lintRelease)` - Android lint, including API-level compatibility
 - `npm start` - Metro (not used by release builds)
 
 ## Project structure

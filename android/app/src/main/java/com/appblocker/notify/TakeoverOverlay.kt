@@ -71,7 +71,8 @@ class TakeoverOverlay(context: Context) {
 
     /** Called from the monitor thread. True if the takeover is now on screen. */
     fun show(packageName: String, message: LimitMessage): Boolean {
-        if (!Settings.canDrawOverlays(context)) {
+        // Before Android 6 the permission is granted at install and there is nothing to ask.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
             Log.w(TAG, "Takeover not shown: 'Display over other apps' is not allowed")
             return false
         }
