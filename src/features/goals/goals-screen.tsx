@@ -84,7 +84,7 @@ export default function GoalsScreen() {
         ListHeaderComponent={header}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Emoji size={56}>🎯</Emoji>
+            <Emoji size={40}>🎯</Emoji>
             <Text style={styles.emptyTitle}>{copy.goals.empty.title}</Text>
             <Text style={styles.emptyBody}>{copy.goals.empty.body}</Text>
           </View>
@@ -108,13 +108,13 @@ export default function GoalsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.canvas, overflow: 'hidden' },
   glow: { position: 'absolute', top: -160, right: -160 },
-  list: { paddingHorizontal: space.xl, paddingBottom: space.huge },
-  header: { gap: space.lg, paddingBottom: space.lg },
-  intro: { ...typography.body, color: palette.textSecondary, lineHeight: 22 },
-  progress: { gap: space.sm },
+  list: { paddingHorizontal: space.lg, paddingBottom: space.xxl },
+  header: { gap: space.md, paddingBottom: space.md },
+  intro: { ...typography.body, color: palette.textSecondary, lineHeight: 20 },
+  progress: { gap: space.xs },
   progressText: { ...typography.heading, color: palette.primary },
   error: { ...typography.body, color: palette.danger },
-  empty: { alignItems: 'center', gap: space.sm, paddingVertical: space.xxl },
+  empty: { alignItems: 'center', gap: space.sm, paddingVertical: space.xl },
   emptyTitle: {
     ...typography.title,
     color: palette.textPrimary,
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   },
   emptyBody: {
     ...typography.body,
-    lineHeight: 22,
+    lineHeight: 20,
     color: palette.textSecondary,
     textAlign: 'center',
   },

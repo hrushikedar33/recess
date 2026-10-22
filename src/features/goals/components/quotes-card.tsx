@@ -50,11 +50,11 @@ export function QuotesCard({
 }
 
 const styles = StyleSheet.create({
-  card: { gap: space.md, marginTop: space.lg },
+  card: { gap: space.sm, marginTop: space.md },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   texts: { flex: 1, gap: space.xs },
   title: { ...typography.heading, color: palette.textPrimary },
-  body: { ...typography.caption, lineHeight: 18, color: palette.textSecondary },
+  body: { ...typography.caption, lineHeight: 17, color: palette.textSecondary },
   link: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center' },
   linkText: {
     ...typography.caption,

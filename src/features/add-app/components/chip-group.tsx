@@ -52,12 +52,12 @@ export function ChipGroup<T extends number | null>({
 }
 
 const styles = StyleSheet.create({
-  group: { gap: space.md },
+  group: { gap: space.sm },
   title: { ...typography.heading, color: palette.textPrimary },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   description: {
     ...typography.body,
-    lineHeight: 21,
+    lineHeight: 19,
     color: palette.textSecondary,
   },
 });

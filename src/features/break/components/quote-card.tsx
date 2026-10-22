@@ -25,13 +25,14 @@ export function QuoteCard({ text, author }: QuoteCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    padding: space.xl,
-    gap: space.md,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+    gap: space.sm,
   },
   quote: {
     ...typography.heading,
-    fontSize: 21,
-    lineHeight: 30,
+    fontSize: 17,
+    lineHeight: 24,
     fontStyle: 'italic',
     color: palette.textPrimary,
   },

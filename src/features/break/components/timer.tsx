@@ -30,8 +30,8 @@ const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     alignSelf: 'center',
-    paddingVertical: space.lg,
-    paddingHorizontal: space.xxl,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.xl,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: palette.blocked,
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
   },
   digits: {
     ...typography.display,
-    fontSize: 56,
+    fontSize: 40,
     color: palette.textPrimary,
     fontVariant: ['tabular-nums'],
   },
@@ -47,6 +47,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: palette.blocked,
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    letterSpacing: 1,
   },
 });

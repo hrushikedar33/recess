@@ -45,10 +45,12 @@ export default function BreakScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.hero, entrance]}>
-          <Emoji size={56}>{face}</Emoji>
-          <Text style={styles.headline} accessibilityRole="header">
-            {headline}
-          </Text>
+          <View style={styles.titleRow}>
+            <Emoji size={28}>{face}</Emoji>
+            <Text style={styles.headline} accessibilityRole="header">
+              {headline}
+            </Text>
+          </View>
           <Text style={styles.detail}>{detail}</Text>
         </Animated.View>
 
@@ -85,31 +87,37 @@ const styles = StyleSheet.create({
   glowTop: { position: 'absolute', top: -160, right: -160 },
   glowBottom: { position: 'absolute', bottom: -180, left: -180 },
   content: {
-    paddingHorizontal: space.xl,
-    paddingTop: space.xxl,
-    paddingBottom: space.xl,
-    gap: space.xl,
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+    paddingBottom: space.md,
+    gap: space.md,
   },
-  hero: { alignItems: 'center', gap: space.sm },
+  hero: { alignItems: 'center', gap: space.xs },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+  },
   headline: {
-    ...typography.display,
+    ...typography.title,
+    fontSize: 24,
     color: palette.textPrimary,
     textAlign: 'center',
   },
   detail: {
     ...typography.body,
-    fontSize: 16,
-    lineHeight: 23,
+    lineHeight: 20,
     color: palette.textSecondary,
     textAlign: 'center',
   },
   footer: {
-    paddingHorizontal: space.xl,
-    paddingTop: space.md,
-    paddingBottom: space.xl,
+    paddingHorizontal: space.lg,
+    paddingTop: space.sm,
+    paddingBottom: space.lg,
   },
   cta: {
-    minHeight: 56,
+    minHeight: 48,
     borderRadius: radius.pill,
     backgroundColor: palette.primary,
     alignItems: 'center',

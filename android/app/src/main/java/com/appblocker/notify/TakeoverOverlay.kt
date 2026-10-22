@@ -182,31 +182,31 @@ class TakeoverOverlay(context: Context) {
             LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(24), dp(72), dp(24), dp(40))
+                setPadding(dp(20), dp(48), dp(20), dp(24))
                 addView(
-                    label(context.getString(R.string.cover_emoji), 56f, R.color.recess_text_primary).apply {
+                    label(context.getString(R.string.cover_emoji), 36f, R.color.recess_text_primary).apply {
                         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                     },
                 )
-                addView(label(message.title, 30f, R.color.recess_text_primary, family = FAMILY_HEAVY, topMargin = 8))
-                addView(label(message.status, 15f, R.color.recess_text_secondary, topMargin = 8))
+                addView(label(message.title, 24f, R.color.recess_text_primary, family = FAMILY_HEAVY, topMargin = 4))
+                addView(label(message.status, 13f, R.color.recess_text_secondary, topMargin = 4))
                 addView(
                     card(
-                        label(message.quote, 21f, R.color.recess_text_primary, family = FAMILY_BODY, italic = true),
+                        label(message.quote, 17f, R.color.recess_text_primary, family = FAMILY_BODY, italic = true),
                     ),
-                    cardParams(topMargin = 28),
+                    cardParams(topMargin = 16),
                 )
                 addView(
-                    card(label(message.goals, 16f, R.color.recess_text_primary, gravity = Gravity.START)),
-                    cardParams(topMargin = 12),
+                    card(label(message.goals, 14f, R.color.recess_text_primary, gravity = Gravity.START)),
+                    cardParams(topMargin = 8),
                 )
                 addView(
                     button(context.getString(R.string.cover_go_home), primary = true) { goHome() },
-                    buttonParams(topMargin = 28),
+                    buttonParams(topMargin = 20),
                 )
                 addView(
                     button(context.getString(R.string.cover_open_recess), primary = false) { openRecess() },
-                    buttonParams(topMargin = 12),
+                    buttonParams(topMargin = 8),
                 )
             }
         val scroll =
@@ -230,7 +230,7 @@ class TakeoverOverlay(context: Context) {
         // background still runs edge to edge.
         ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
-            content.setPadding(dp(24) + bars.left, dp(48) + bars.top, dp(24) + bars.right, dp(32) + bars.bottom)
+            content.setPadding(dp(20) + bars.left, dp(32) + bars.top, dp(20) + bars.right, dp(20) + bars.bottom)
             insets
         }
         return Built(root, content)
@@ -266,7 +266,7 @@ class TakeoverOverlay(context: Context) {
 
     private fun card(child: View) =
         FrameLayout(context).apply {
-            setPadding(dp(20), dp(18), dp(20), dp(18))
+            setPadding(dp(16), dp(12), dp(16), dp(12))
             background =
                 GradientDrawable().apply {
                     cornerRadius = dp(20).toFloat()
@@ -326,13 +326,13 @@ class TakeoverOverlay(context: Context) {
         Button(context).apply {
             this.text = text
             isAllCaps = false
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
             typeface = Typeface.create(FAMILY_HEAVY, Typeface.NORMAL)
             setTextColor(color(if (primary) R.color.recess_on_primary else R.color.recess_text_primary))
             stateListAnimator = null
             background =
                 GradientDrawable().apply {
-                    cornerRadius = dp(28).toFloat()
+                    cornerRadius = dp(24).toFloat()
                     if (primary) {
                         setColor(color(R.color.recess_primary))
                     } else {
@@ -353,7 +353,7 @@ class TakeoverOverlay(context: Context) {
         }
 
     private fun buttonParams(topMargin: Int) =
-        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56)).apply { this.topMargin = dp(topMargin) }
+        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)).apply { this.topMargin = dp(topMargin) }
 
     private fun color(res: Int): Int = ContextCompat.getColor(context, res)
 

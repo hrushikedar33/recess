@@ -144,18 +144,18 @@ export function AppConfig(props: AppConfigProps) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.canvas },
   content: {
-    paddingHorizontal: space.xl,
-    paddingBottom: space.xl,
-    gap: space.xl,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.lg,
+    gap: space.lg,
   },
-  hero: { alignItems: 'center', gap: space.md, paddingVertical: space.md },
-  icon: { width: 72, height: 72, borderRadius: radius.md },
+  hero: { alignItems: 'center', gap: space.sm },
+  icon: { width: 52, height: 52, borderRadius: radius.md },
   iconFallback: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: palette.raised,
   },
-  iconLetter: { ...typography.display, fontSize: 32, color: palette.primary },
+  iconLetter: { ...typography.title, color: palette.primary },
   appName: { ...typography.title, color: palette.textPrimary },
   summary: { alignItems: 'center' },
   summaryText: {
@@ -165,12 +165,12 @@ const styles = StyleSheet.create({
   },
   error: { ...typography.body, color: palette.danger },
   footer: {
-    paddingHorizontal: space.xl,
-    paddingBottom: space.xl,
-    paddingTop: space.md,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.lg,
+    paddingTop: space.sm,
   },
   save: {
-    minHeight: 56,
+    minHeight: 48,
     borderRadius: radius.pill,
     backgroundColor: palette.primary,
     alignItems: 'center',

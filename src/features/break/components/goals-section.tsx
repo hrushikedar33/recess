@@ -57,7 +57,7 @@ export function GoalsSection({ goals, onToggle }: GoalsSectionProps) {
 
       {allDone && (
         <Card tone="primary" style={styles.celebrate}>
-          <Emoji size={26}>🎉</Emoji>
+          <Emoji size={22}>🎉</Emoji>
           <Text style={styles.celebrateText}>{copy.break.allDone}</Text>
         </Card>
       )}
@@ -71,10 +71,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: space.sm,
+    marginBottom: space.xs,
   },
   titles: { flex: 1 },
-  title: { ...typography.title, fontSize: 22, color: palette.textPrimary },
+  title: { ...typography.heading, color: palette.textPrimary },
   hint: { ...typography.caption, color: palette.textSecondary, marginTop: 2 },
   pill: {
     borderRadius: radius.pill,
@@ -88,13 +88,13 @@ const styles = StyleSheet.create({
   empty: {
     ...typography.body,
     color: palette.textSecondary,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   celebrate: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.md,
-    marginTop: space.sm,
+    gap: space.sm,
+    marginTop: space.xs,
   },
   celebrateText: {
     ...typography.heading,
