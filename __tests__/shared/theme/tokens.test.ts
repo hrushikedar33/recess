@@ -79,6 +79,28 @@ describe('scales', () => {
     expect(pill).toBeGreaterThan(Math.max(...values));
   });
 
+  it('keeps the type compact: sizes may not creep back up (phones are small)', () => {
+    // Raise these only on purpose, after looking at the screens on a phone.
+    expect(typography.display.fontSize).toBeLessThanOrEqual(30);
+    expect(typography.title.fontSize).toBeLessThanOrEqual(20);
+    expect(typography.heading.fontSize).toBeLessThanOrEqual(16);
+    expect(typography.body.fontSize).toBeLessThanOrEqual(14);
+    expect(typography.label.fontSize).toBeLessThanOrEqual(13);
+  });
+
+  it('keeps the steps of the scale in order', () => {
+    const sizes = [
+      typography.caption.fontSize,
+      typography.label.fontSize,
+      typography.body.fontSize,
+      typography.heading.fontSize,
+      typography.title.fontSize,
+      typography.display.fontSize,
+    ];
+
+    expect([...sizes].sort((a, b) => a - b)).toEqual(sizes);
+  });
+
   it('the type scale never goes below 12 and headings are heavier than body', () => {
     for (const style of Object.values(typography)) {
       expect(style.fontSize).toBeGreaterThanOrEqual(12);

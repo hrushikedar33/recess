@@ -1,4 +1,8 @@
-import { describeLimits, limitChips } from '@features/home/limit-summary';
+import {
+  describeLimits,
+  limitChips,
+  limitsLine,
+} from '@features/home/limit-summary';
 
 const base = {
   packageName: 'p',
@@ -42,5 +46,23 @@ describe('limitChips', () => {
 
     expect(chips[0].spoken).toBe('1 minute session');
     expect(chips[1].spoken).toBe('1 minute break');
+  });
+});
+
+describe('limitsLine', () => {
+  it('puts the three limits on one short line, and says them in words for a screen reader', () => {
+    expect(limitsLine({ ...base, dailyLimitMinutes: 60 })).toEqual({
+      label: '10 min/sesh · 5 min break · 60 min/day',
+      spoken: '10 minute sessions, 5 minute break, 60 minutes a day',
+    });
+  });
+
+  it('ends with "no cap" when there is no daily budget', () => {
+    const line = limitsLine(base);
+
+    expect(line.label).toBe('10 min/sesh · 5 min break · no cap');
+    expect(line.spoken).toBe(
+      '10 minute sessions, 5 minute break, no daily cap',
+    );
   });
 });

@@ -52,9 +52,9 @@ export function NoticeCard({
 }
 
 const styles = StyleSheet.create({
-  card: { gap: space.sm },
+  card: { gap: space.xs },
   title: { ...typography.heading, color: palette.textPrimary },
-  body: { ...typography.body, lineHeight: 21, color: palette.textPrimary },
+  body: { ...typography.body, lineHeight: 19, color: palette.textPrimary },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -62,9 +62,9 @@ const styles = StyleSheet.create({
     marginTop: space.xs,
   },
   action: {
-    minHeight: 36,
+    minHeight: 32,
     justifyContent: 'center',
-    paddingHorizontal: space.lg,
+    paddingHorizontal: space.md,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: palette.warning,

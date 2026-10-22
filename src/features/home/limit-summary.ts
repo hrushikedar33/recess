@@ -42,3 +42,12 @@ export function limitChips(app: BlockedApp): LimitChip[] {
     daily,
   ];
 }
+
+/** All three limits as one short line (and the same in words for a screen reader), for the compact app card. */
+export function limitsLine(app: BlockedApp): { label: string; spoken: string } {
+  const chips = limitChips(app);
+  return {
+    label: chips.map((chip) => chip.label).join(' · '),
+    spoken: chips.map((chip) => chip.spoken).join(', '),
+  };
+}

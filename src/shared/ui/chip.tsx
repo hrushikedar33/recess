@@ -45,9 +45,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     backgroundColor: palette.raised,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.sm,
-    minHeight: 36,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs,
+    minHeight: 32,
     justifyContent: 'center',
   },
   chipSelected: {

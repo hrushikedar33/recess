@@ -18,7 +18,7 @@ interface GoalRowProps {
   index?: number;
 }
 
-const BOX = 28;
+const BOX = 24;
 
 /**
  * One goal: a big tappable row with a checkbox that pops, a strike-through and a little confetti
@@ -109,15 +109,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: radius.md,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    marginBottom: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    marginBottom: space.xs,
   },
   main: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 40,
+    minHeight: 32,
   },
   box: {
     width: BOX,
@@ -137,13 +137,13 @@ const styles = StyleSheet.create({
   },
   check: {
     color: palette.onPrimary,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '900',
   },
   title: {
     ...typography.body,
     flex: 1,
-    fontSize: 16,
+    fontWeight: '600',
     color: palette.textPrimary,
   },
   titleDone: {
@@ -159,6 +159,6 @@ const styles = StyleSheet.create({
   },
   removeText: {
     color: palette.textSecondary,
-    fontSize: 16,
+    fontSize: 14,
   },
 });

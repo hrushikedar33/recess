@@ -58,11 +58,11 @@ export const radius = {
 
 /** System font, heavy weights and tight tracking do the work a custom typeface would. */
 export const typography = {
-  display: { fontSize: 40, fontWeight: '800', letterSpacing: -1.2 },
-  title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.6 },
-  heading: { fontSize: 18, fontWeight: '700', letterSpacing: -0.2 },
-  body: { fontSize: 15, fontWeight: '400', letterSpacing: 0 },
-  label: { fontSize: 14, fontWeight: '700', letterSpacing: 0.1 },
+  display: { fontSize: 30, fontWeight: '800', letterSpacing: -0.8 },
+  title: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
+  heading: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
+  body: { fontSize: 14, fontWeight: '400', letterSpacing: 0 },
+  label: { fontSize: 13, fontWeight: '700', letterSpacing: 0.1 },
   caption: { fontSize: 12, fontWeight: '500', letterSpacing: 0.2 },
 } as const;
 

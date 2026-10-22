@@ -12,7 +12,7 @@ export function EmptyApps() {
   return (
     <View style={styles.box}>
       <Animated.View style={{ transform: [{ scale: float }] }}>
-        <Emoji size={64}>🌱</Emoji>
+        <Emoji size={44}>🌱</Emoji>
       </Animated.View>
       <Text style={styles.title}>{copy.home.empty.title}</Text>
       <Text style={styles.body}>{copy.home.empty.body}</Text>
@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   box: {
     alignItems: 'center',
     gap: space.sm,
-    paddingVertical: space.huge,
+    paddingVertical: space.xl,
     paddingHorizontal: space.xl,
   },
   title: {
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
   },
   body: {
     ...typography.body,
-    lineHeight: 22,
+    lineHeight: 20,
     color: palette.textSecondary,
     textAlign: 'center',
   },

@@ -10,10 +10,9 @@ import {
   space,
   typography,
 } from '../../../shared/theme/tokens';
-import { Pill } from '../../../shared/ui/pill';
 import { PressableScale } from '../../../shared/ui/pressable-scale';
 import { Toggle } from '../../../shared/ui/toggle';
-import { limitChips } from '../limit-summary';
+import { limitsLine } from '../limit-summary';
 
 interface AppCardProps {
   app: BlockedApp;
@@ -23,9 +22,13 @@ interface AppCardProps {
   onRemove: () => void;
 }
 
-/** One limited app: icon, name, its three limits as tags, a switch and a remove button. */
+/**
+ * One limited app on a single compact row: icon, the name with a remove button beside it, the three
+ * limits as one small line, and the switch at the right.
+ */
 export function AppCard({ app, index, onToggle, onRemove }: AppCardProps) {
   const entrance = useEntrance(staggerDelay(index), 16);
+  const limits = limitsLine(app);
 
   return (
     <Animated.View
@@ -41,33 +44,27 @@ export function AppCard({ app, index, onToggle, onRemove }: AppCardProps) {
         </View>
       )}
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
-          {app.appName}
-        </Text>
-        <View style={styles.chips}>
-          {limitChips(app).map((chip) => (
-            <Pill
-              key={chip.label}
-              label={chip.label}
-              accessibilityLabel={chip.spoken}
-            />
-          ))}
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {app.appName}
+          </Text>
+          <PressableScale
+            accessibilityLabel={copy.home.remove(app.appName)}
+            onPress={onRemove}
+            style={styles.remove}
+          >
+            <Text style={styles.removeGlyph}>✕</Text>
+          </PressableScale>
         </View>
+        <Text style={styles.limits} accessibilityLabel={limits.spoken}>
+          {limits.label}
+        </Text>
       </View>
-      <View style={styles.controls}>
-        <Toggle
-          value={app.isActive}
-          onValueChange={onToggle}
-          accessibilityLabel={copy.home.appSwitch(app.appName)}
-        />
-        <PressableScale
-          accessibilityLabel={copy.home.remove(app.appName)}
-          onPress={onRemove}
-          style={styles.remove}
-        >
-          <Text style={styles.removeGlyph}>✕</Text>
-        </PressableScale>
-      </View>
+      <Toggle
+        value={app.isActive}
+        onValueChange={onToggle}
+        accessibilityLabel={copy.home.appSwitch(app.appName)}
+      />
     </Animated.View>
   );
 }
@@ -77,30 +74,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    padding: space.lg,
+    paddingVertical: space.md,
+    paddingHorizontal: space.md,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: palette.border,
     backgroundColor: palette.surface,
-    marginBottom: space.md,
+    marginBottom: space.sm,
   },
   cardOff: { opacity: 0.6 },
-  icon: { width: 48, height: 48, borderRadius: radius.sm },
+  icon: { width: 40, height: 40, borderRadius: radius.sm },
   iconFallback: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: palette.raised,
   },
-  iconLetter: { ...typography.title, color: palette.primary },
-  info: { flex: 1, gap: space.sm },
-  name: { ...typography.heading, color: palette.textPrimary },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
-  controls: { alignItems: 'center', gap: space.sm },
+  iconLetter: { ...typography.heading, color: palette.primary },
+  info: { flex: 1, gap: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center' },
+  name: { ...typography.heading, flex: 1, color: palette.textPrimary },
+  // 32 dp tall plus the hit slop is a 48 dp target; the negative margin keeps the row itself compact.
   remove: {
     width: 32,
     height: 32,
+    marginVertical: -4,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  removeGlyph: { color: palette.textSecondary, fontSize: 16 },
+  removeGlyph: { color: palette.textSecondary, fontSize: 13 },
+  limits: { ...typography.caption, color: palette.textSecondary },
 });

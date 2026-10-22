@@ -51,16 +51,17 @@ export function GoalsCard({ done, total, onPress }: GoalsCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    gap: space.md,
-    padding: space.xl,
-    borderRadius: radius.lg,
+    gap: space.sm,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: palette.border,
     backgroundColor: palette.surface,
   },
   row: { flexDirection: 'row', alignItems: 'center' },
-  texts: { flex: 1, gap: 2 },
+  texts: { flex: 1 },
   title: { ...typography.heading, color: palette.textPrimary },
   summary: { ...typography.body, color: palette.textSecondary },
-  chevron: { fontSize: 28, color: palette.textSecondary, marginLeft: space.md },
+  chevron: { fontSize: 22, color: palette.textSecondary, marginLeft: space.md },
 });

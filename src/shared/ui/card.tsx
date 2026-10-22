@@ -50,6 +50,7 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderRadius: radius.md,
-    padding: space.lg,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
   },
 });

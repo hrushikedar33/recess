@@ -250,15 +250,27 @@ describe('AppCard', () => {
     isActive: true,
   };
 
-  it('shows the app and its three limits as tags', () => {
+  it('shows the app and its three limits on one short line', () => {
     render(
       <AppCard app={app} index={0} onToggle={jest.fn()} onRemove={jest.fn()} />,
     );
 
     expect(screen.getByText('Instagram')).toBeTruthy();
-    expect(screen.getByText('5 min/sesh')).toBeTruthy();
-    expect(screen.getByText('10 min break')).toBeTruthy();
-    expect(screen.getByText('60 min/day')).toBeTruthy();
+    expect(
+      screen.getByText('5 min/sesh · 10 min break · 60 min/day'),
+    ).toBeTruthy();
+  });
+
+  it('says the limits in words for a screen reader', () => {
+    render(
+      <AppCard app={app} index={0} onToggle={jest.fn()} onRemove={jest.fn()} />,
+    );
+
+    expect(
+      screen.getByLabelText(
+        '5 minute sessions, 10 minute break, 60 minutes a day',
+      ),
+    ).toBeTruthy();
   });
 
   it('says "no cap" when there is no daily budget', () => {
@@ -271,7 +283,7 @@ describe('AppCard', () => {
       />,
     );
 
-    expect(screen.getByText('no cap')).toBeTruthy();
+    expect(screen.getByText('5 min/sesh · 10 min break · no cap')).toBeTruthy();
   });
 
   it('has a switch for this app that reports its state and toggles it', () => {
