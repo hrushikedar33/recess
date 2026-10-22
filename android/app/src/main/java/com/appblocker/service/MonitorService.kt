@@ -219,6 +219,9 @@ class MonitorService : Service() {
             val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             val exit = manager.getHistoricalProcessExitReasons(packageName, 0, 1).firstOrNull() ?: return
             if (exit.timestamp <= (prefs.lastHeartbeatAt() ?: 0L)) return
+            // Replacing the app kills its old process; that is an update, not an interruption.
+            val updatedAt = runCatching { packageManager.getPackageInfo(packageName, 0).lastUpdateTime }.getOrNull()
+            if (!ExitReasonFormatter.shouldReport(exit.reason, exit.timestamp, updatedAt)) return
             prefs.recordStopReason(
                 ExitReasonFormatter.describe(exit.reason, exit.timestamp) {
                     DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(it))

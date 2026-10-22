@@ -27,6 +27,25 @@ object ExitReasonFormatter {
             16 to "PACKAGE_UPDATED",
         )
 
+    private const val REASON_PACKAGE_STATE_CHANGE = 15
+    private const val REASON_PACKAGE_UPDATED = 16
+
+    /** How far from the moment the app was updated an exit still counts as "caused by the update". */
+    const val UPDATE_WINDOW_MS = 30_000L
+
+    /**
+     * Whether a previous exit should be shown to the user as an interruption. Replacing the app
+     * kills its old process, and Android records that as OTHER (on a Samsung: "INVALID START"), so an
+     * update used to look like "Recess was closed by the system". An exit within
+     * [UPDATE_WINDOW_MS] of the package's last update, or one the system itself blames on an update or
+     * a package change, is not an interruption. A real kill long after an update still is.
+     */
+    fun shouldReport(reason: Int, exitMs: Long, packageUpdatedMs: Long?): Boolean {
+        if (reason == REASON_PACKAGE_UPDATED || reason == REASON_PACKAGE_STATE_CHANGE) return false
+        if (packageUpdatedMs != null && kotlin.math.abs(exitMs - packageUpdatedMs) < UPDATE_WINDOW_MS) return false
+        return true
+    }
+
     fun name(reason: Int): String = names[reason] ?: "UNKNOWN_$reason"
 
     fun describe(reason: Int, timestampMs: Long, formatTime: (Long) -> String): String =
